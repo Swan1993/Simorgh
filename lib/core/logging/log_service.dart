@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'log_entry.dart';
 import 'redactor.dart';
+import 'log_sink.dart';
 
 /// In-memory structured logger with a bounded history and a live stream.
 ///
@@ -11,9 +12,11 @@ class LogService {
   LogService({
     Redactor? redactor,
     this.maxEntries = 5000,
+    LogSink? sink,
     DateTime Function()? clock,
-  })  : assert(maxEntries > 0, 'maxEntries must be greater than zero'),
+  }) : assert(maxEntries > 0, 'maxEntries must be greater than zero'),
         _redactor = redactor ?? Redactor(),
+        _sink = sink,
         _clock = clock ?? DateTime.now {
     if (maxEntries <= 0) {
       throw ArgumentError.value(maxEntries, 'maxEntries');
@@ -22,6 +25,7 @@ class LogService {
 
   final int maxEntries;
   final Redactor _redactor;
+  final LogSink? _sink;
   final DateTime Function() _clock;
   final List<LogEntry> _entries = <LogEntry>[];
   final StreamController<LogEntry> _controller =
@@ -60,6 +64,13 @@ class LogService {
       _entries.removeRange(0, _entries.length - maxEntries);
     }
     _controller.add(entry);
+    // A logging failure must never take down the connection flow. The entry
+    // remains available in memory even if a disk/permission issue occurs.
+    try {
+      _sink?.append(entry);
+    } on Object {
+      // Intentionally ignored; callers can still inspect the in-memory ring.
+    }
     return entry;
   }
 
@@ -69,12 +80,12 @@ class LogService {
     String? errorCode,
     Map<String, Object?> metadata = const <String, Object?>{},
   }) => log(
-        level: LogLevel.debug,
-        component: component,
-        message: message,
-        errorCode: errorCode,
-        metadata: metadata,
-      );
+    level: LogLevel.debug,
+    component: component,
+    message: message,
+    errorCode: errorCode,
+    metadata: metadata,
+  );
 
   LogEntry info(
     String component,
@@ -82,12 +93,12 @@ class LogService {
     String? errorCode,
     Map<String, Object?> metadata = const <String, Object?>{},
   }) => log(
-        level: LogLevel.info,
-        component: component,
-        message: message,
-        errorCode: errorCode,
-        metadata: metadata,
-      );
+    level: LogLevel.info,
+    component: component,
+    message: message,
+    errorCode: errorCode,
+    metadata: metadata,
+  );
 
   LogEntry warning(
     String component,
@@ -95,12 +106,12 @@ class LogService {
     String? errorCode,
     Map<String, Object?> metadata = const <String, Object?>{},
   }) => log(
-        level: LogLevel.warning,
-        component: component,
-        message: message,
-        errorCode: errorCode,
-        metadata: metadata,
-      );
+    level: LogLevel.warning,
+    component: component,
+    message: message,
+    errorCode: errorCode,
+    metadata: metadata,
+  );
 
   LogEntry error(
     String component,
@@ -108,12 +119,12 @@ class LogService {
     String? errorCode,
     Map<String, Object?> metadata = const <String, Object?>{},
   }) => log(
-        level: LogLevel.error,
-        component: component,
-        message: message,
-        errorCode: errorCode,
-        metadata: metadata,
-      );
+    level: LogLevel.error,
+    component: component,
+    message: message,
+    errorCode: errorCode,
+    metadata: metadata,
+  );
 
   LogEntry ai(
     String component,
@@ -121,14 +132,21 @@ class LogService {
     String? errorCode,
     Map<String, Object?> metadata = const <String, Object?>{},
   }) => log(
-        level: LogLevel.ai,
-        component: component,
-        message: message,
-        errorCode: errorCode,
-        metadata: metadata,
-      );
+    level: LogLevel.ai,
+    component: component,
+    message: message,
+    errorCode: errorCode,
+    metadata: metadata,
+  );
 
-  void clear() => _entries.clear();
+  void clear() {
+    _entries.clear();
+    try {
+      _sink?.clear();
+    } on Object {
+      // Intentionally ignored for the same reason as append failures.
+    }
+  }
 
   Future<void> dispose() async {
     if (_disposed) {
