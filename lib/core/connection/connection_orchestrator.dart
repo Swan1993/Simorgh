@@ -43,7 +43,8 @@ class ConnectionOrchestrator {
           return FailureCode.verifyTimeout;
         }
         final stage = event.type == ScanEventType.finished || event.type == ScanEventType.bestChanged ? OrchestratorStage.selectingBest : OrchestratorStage.scanning;
-        _emit(OrchestratorEvent(stage: stage, progress: event.total == 0 ? 0 : (event.tested * 100 ~/ event.total).clamp(0, 100), scanEvent: event));
+        final progress = event.total == 0 ? 0 : (event.tested * 100 ~/ event.total).clamp(0, 100).toInt();
+        _emit(OrchestratorEvent(stage: stage, progress: progress, scanEvent: event));
       }
       final summary = await _activeScan!.done;
       final best = summary.best;
