@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../core/connection/connection_flow.dart';
+import '../core/failures/failure_code.dart';
+import '../core/logging/log_service.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
 import '../l10n/strings.dart';
@@ -20,27 +23,49 @@ class _HomePageState extends State<HomePage> {
   Timer? _timer;
   int _progress = 0;
   final _rows = <String>['104.16.132.48', '104.19.241.93', '172.67.12.18', '104.28.14.99', '162.159.36.1'];
+  late final LogService _logger;
+  late final MockConnectionFlow _flow;
   AppStrings get s => widget.strings;
+
+  @override
+  void initState() {
+    super.initState();
+    _logger = LogService();
+    _flow = MockConnectionFlow(logger: _logger);
+  }
 
   void _start() {
     _timer?.cancel();
+    _flow.transition(ConnectionStage.preparing);
     setState(() { _state = TunnelState.scanning; _progress = 0; });
+    _flow.transition(ConnectionStage.scanning);
     _timer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
       if (!mounted) return;
       setState(() {
         _progress += 8;
-        if (_progress >= 72 && _progress < 100) _state = TunnelState.connecting;
-        if (_progress >= 100) { _state = TunnelState.connected; timer.cancel(); }
+        if (_progress >= 72 && _progress < 100) {
+          _state = TunnelState.connecting;
+          _flow.transition(ConnectionStage.startingCore, progress: _progress);
+        }
+        if (_progress >= 100) {
+          _state = TunnelState.connected;
+          _flow.transition(ConnectionStage.connected, progress: 100);
+          timer.cancel();
+        }
       });
     });
   }
 
-  void _fail() { _timer?.cancel(); setState(() => _state = TunnelState.failed); }
+  void _fail() {
+    _timer?.cancel();
+    _flow.fail(FailureCode.tlsHandshakeReset, 'Handshake timed out during the simulated connection.');
+    setState(() => _state = TunnelState.failed);
+  }
   String get _label => switch (_state) { TunnelState.idle => s.connect, TunnelState.scanning => s.scanning, TunnelState.connecting => 'ROUTING', TunnelState.connected => s.connected, TunnelState.failed => s.failed };
   Color get _color => switch (_state) { TunnelState.connected => AppColors.green, TunnelState.failed => AppColors.red, _ => AppColors.cyan };
 
   @override
-  void dispose() { _timer?.cancel(); super.dispose(); }
+  void dispose() { _timer?.cancel(); _logger.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(padding: const EdgeInsets.all(24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
