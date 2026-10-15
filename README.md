@@ -57,6 +57,17 @@ flutter build windows --release
 
 The release output is under `build/windows/x64/runner/Release/`.
 
+For a repeatable Windows build with checks and a SHA-256 manifest:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1
+```
+
+The optional Inno Setup definition is `installer/Simorgh.iss`. Open it with
+Inno Setup 6 after the release build to create a per-user installer under
+`installer/Output/`. A portable distribution is the complete contents of
+`build/windows/x64/runner/Release/`, including `SHA256SUMS.txt`.
+
 ## Security
 
 Never put Cloudflare tokens, AI keys, UUIDs or private configuration in this repository. The current UI uses placeholders only. Future services must use Windows Credential Manager and redact logs before diagnostic export or AI requests.
