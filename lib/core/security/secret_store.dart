@@ -48,7 +48,7 @@ class InMemorySecretStore implements SecretStore {
 /// secure key store.
 class SecureSecretStore implements SecretStore {
   SecureSecretStore({FlutterSecureStorage? storage})
-    : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
 

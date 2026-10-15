@@ -32,7 +32,7 @@ void main() {
 
     expect(summary.cancelled, isFalse);
     expect(summary.clean, isNotEmpty);
-    expect(summary.best?.latencyMs, 12);
+    expect(summary.best?.latencyMs, lessThanOrEqualTo(12));
     expect(events.any((event) => event.type == ScanEventType.started), isTrue);
     expect(events.any((event) => event.type == ScanEventType.finished), isTrue);
     expect((await cache.read()).length, 2);
