@@ -190,7 +190,7 @@ class _HomePageState extends State<HomePage> {
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: constraints.maxWidth >= 700 ? 4 : 2,
-                  mainAxisExtent: 100,
+                  mainAxisExtent: 132,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
                 ),
@@ -269,10 +269,11 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Mono('$_progress%'),
                   const Spacer(),
-                  Text(
+                  Flexible(child: Text(
                     '1,720 / 2,500 ${s.tested}  •  42 ${s.cleanFound}',
                     style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                    overflow: TextOverflow.ellipsis,
+                  )),
                 ],
               ),
               const SizedBox(height: 16),
