@@ -22,6 +22,7 @@ class _HomePageState extends State<HomePage> {
   TunnelState _state = TunnelState.idle;
   Timer? _timer;
   int _progress = 0;
+  int _runId = 0;
   final _rows = <String>[
     '104.16.132.48',
     '104.19.241.93',
@@ -41,7 +42,16 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _start() {
+    if (_state == TunnelState.scanning || _state == TunnelState.connecting) {
+      _cancelConnection();
+      return;
+    }
+    if (_state == TunnelState.connected) {
+      _disconnect();
+      return;
+    }
     _timer?.cancel();
+    final runId = ++_runId;
     _flow.transition(ConnectionStage.preparing);
     setState(() {
       _state = TunnelState.scanning;
@@ -49,7 +59,10 @@ class _HomePageState extends State<HomePage> {
     });
     _flow.transition(ConnectionStage.scanning);
     _timer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
-      if (!mounted) return;
+      if (!mounted || runId != _runId) {
+        timer.cancel();
+        return;
+      }
       setState(() {
         _progress += 8;
         if (_progress >= 72 && _progress < 100) {
@@ -65,8 +78,24 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _fail() {
+  void _cancelConnection() {
+    _runId++;
     _timer?.cancel();
+    _timer = null;
+    if (!mounted) return;
+    _flow.transition(ConnectionStage.idle);
+    setState(() {
+      _state = TunnelState.idle;
+      _progress = 0;
+    });
+  }
+
+  void _disconnect() => _cancelConnection();
+
+  void _fail() {
+    _runId++;
+    _timer?.cancel();
+    _timer = null;
     _flow.fail(
       FailureCode.tlsHandshakeReset,
       'Handshake timed out during the simulated connection.',
@@ -76,9 +105,9 @@ class _HomePageState extends State<HomePage> {
 
   String get _label => switch (_state) {
     TunnelState.idle => s.connect,
-    TunnelState.scanning => s.scanning,
-    TunnelState.connecting => 'ROUTING',
-    TunnelState.connected => s.connected,
+    TunnelState.scanning => s.cancel,
+    TunnelState.connecting => s.cancel,
+    TunnelState.connected => s.disconnect,
     TunnelState.failed => s.failed,
   };
   Color get _color => switch (_state) {
@@ -89,6 +118,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _runId++;
     _timer?.cancel();
     _logger.dispose();
     super.dispose();
@@ -116,11 +146,8 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 20),
               InkWell(
-                onTap:
-                    _state == TunnelState.scanning ||
-                        _state == TunnelState.connecting
-                    ? null
-                    : _start,
+                key: const ValueKey<String>('connect-orb'),
+                onTap: _start,
                 borderRadius: BorderRadius.circular(100),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
@@ -251,8 +278,9 @@ class _HomePageState extends State<HomePage> {
                 title: s.scannerTitle,
                 subtitle: s.scannerSubtitle,
                 action: OutlinedButton.icon(
-                  onPressed: _state == TunnelState.scanning
-                      ? () => setState(() => _state = TunnelState.idle)
+                  key: const ValueKey<String>('cancel-scan'),
+                  onPressed: _state == TunnelState.scanning || _state == TunnelState.connecting
+                      ? _cancelConnection
                       : null,
                   icon: const Icon(Icons.cancel_outlined),
                   label: Text(s.cancel),
@@ -267,7 +295,7 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Mono('$_progress%'),
+                  Mono('$_progress%', key: const ValueKey<String>('scan-progress')),
                   const Spacer(),
                   Flexible(child: Text(
                     '1,720 / 2,500 ${s.tested}  •  42 ${s.cleanFound}',

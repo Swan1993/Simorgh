@@ -33,6 +33,17 @@ class _FakeLauncher implements CoreLauncher {
   Future<CoreHandle> launch(String executable, List<String> arguments) async => handle;
 }
 
+class _DelayedLauncher implements CoreLauncher {
+  final gate = Completer<void>();
+  final handle = _FakeHandle();
+
+  @override
+  Future<CoreHandle> launch(String executable, List<String> arguments) async {
+    await gate.future;
+    return handle;
+  }
+}
+
 class _FakeProxy implements SystemProxyManager {
   var enabled = false;
   var restored = false;
@@ -74,5 +85,35 @@ void main() {
     final result = await service.start(const CoreLaunchConfig(binaryPath: 'missing-core.exe', endpoint: CoreEndpoint(server: 'relay.test', port: 443, uuid: 'id')));
     expect(result.failure, FailureCode.coreMissing);
     expect(service.state, CoreState.failed);
+  });
+
+  test('stop cancels a core launch that is still waiting for the process', () async {
+    final binary = File('${directory.path}${Platform.pathSeparator}core.exe')
+      ..writeAsStringSync('fake core');
+    final launcher = _DelayedLauncher();
+    final service = CoreService(
+      logger: LogService(),
+      launcher: launcher,
+      proxyManager: _FakeProxy(),
+    );
+    final startFuture = service.start(
+      CoreLaunchConfig(
+        binaryPath: binary.path,
+        endpoint: const CoreEndpoint(
+          server: 'relay.test',
+          port: 443,
+          uuid: 'id',
+        ),
+        useSystemProxy: true,
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    final stopFuture = service.stop();
+    launcher.gate.complete();
+    await stopFuture;
+    final result = await startFuture;
+
+    expect(result.failure, FailureCode.verifyTimeout);
+    expect(service.state, CoreState.stopped);
   });
 }

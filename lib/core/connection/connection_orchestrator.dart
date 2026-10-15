@@ -40,22 +40,33 @@ class ConnectionOrchestrator {
       await for (final event in _activeScan!.events) {
         if (_cancelled) {
           _activeScan?.cancel();
-          return FailureCode.verifyTimeout;
+          return null;
         }
         final stage = event.type == ScanEventType.finished || event.type == ScanEventType.bestChanged ? OrchestratorStage.selectingBest : OrchestratorStage.scanning;
         final progress = event.total == 0 ? 0 : (event.tested * 100 ~/ event.total).clamp(0, 100).toInt();
         _emit(OrchestratorEvent(stage: stage, progress: progress, scanEvent: event));
       }
       final summary = await _activeScan!.done;
+      if (_cancelled) {
+        return null;
+      }
       final best = summary.best;
       if (best == null) return _fail(FailureCode.allIpsBlocked, 'No clean candidate IP was found.');
       _emit(const OrchestratorEvent(stage: OrchestratorStage.buildingConfig, progress: 80));
       final config = CoreLaunchConfig(binaryPath: coreBinaryPath, expectedSha256: expectedCoreSha256, useSystemProxy: useSystemProxy, endpoint: CoreEndpoint(server: best.ip, serverName: relayServerName, port: relayPort, uuid: relayUuid, path: relayPath));
       _emit(const OrchestratorEvent(stage: OrchestratorStage.startingCore, progress: 88));
       final started = await core.start(config);
+      if (_cancelled) {
+        await core.stop();
+        return null;
+      }
       if (!started.isSuccess) return _fail(started.failure ?? FailureCode.coreCrash, 'Core failed to start.');
       _emit(const OrchestratorEvent(stage: OrchestratorStage.verifyingConnection, progress: 94));
       final result = await _health?.checkOnce();
+      if (_cancelled) {
+        await core.stop();
+        return null;
+      }
       if (result != null && !result.healthy) return _fail(FailureCode.verifyTimeout, 'Health verification failed.');
       _emit(const OrchestratorEvent(stage: OrchestratorStage.connected, progress: 100));
       _health?.start();

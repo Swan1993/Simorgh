@@ -40,29 +40,54 @@ class CoreService {
   CoreHandle? _handle;
   File? _configFile;
   bool _proxyEnabled = false;
+  Future<CoreStartResult>? _startOperation;
+  int _generation = 0;
+  bool _stopRequested = false;
   CoreState state = CoreState.stopped;
   FailureCode? lastFailure;
 
-  Future<CoreStartResult> start(CoreLaunchConfig launch) async {
+  Future<CoreStartResult> start(CoreLaunchConfig launch) {
     if (state == CoreState.running) {
-      return CoreStartResult.success(_configFile?.path ?? '');
+      return Future<CoreStartResult>.value(
+        CoreStartResult.success(_configFile?.path ?? ''),
+      );
     }
+    final generation = ++_generation;
+    _stopRequested = false;
     state = CoreState.starting;
     lastFailure = null;
+    final operation = _startInternal(launch, generation);
+    _startOperation = operation;
+    return operation.whenComplete(() {
+      if (identical(_startOperation, operation)) {
+        _startOperation = null;
+      }
+    });
+  }
+
+  Future<CoreStartResult> _startInternal(
+    CoreLaunchConfig launch,
+    int generation,
+  ) async {
     final binary = File(launch.binaryPath);
     if (!binary.existsSync()) {
       return _failure(FailureCode.coreMissing, 'Core executable was not found.');
     }
 
     try {
+      _ensureStartCurrent(generation);
       await _verifyHash(binary, launch.expectedSha256);
+      _ensureStartCurrent(generation);
       final configFile = await _writeTemporaryConfig(launch);
+      _ensureStartCurrent(generation);
       _configFile = configFile;
       if (launch.useSystemProxy) {
         await _proxyManager.enable(host: '127.0.0.1', port: launch.localHttpPort);
         _proxyEnabled = true;
       }
+      _ensureStartCurrent(generation);
       final handle = await _launcher.launch(binary.path, ['run', '-c', configFile.path]);
+      _ensureStartCurrent(generation);
       _handle = handle;
       _listenToOutput(handle.stdout, LogLevel.info, 'core.stdout');
       _listenToOutput(handle.stderr, LogLevel.warning, 'core.stderr');
@@ -81,29 +106,55 @@ class CoreService {
   }
 
   Future<void> stop() async {
-    if (state == CoreState.stopped) {
+    if (state == CoreState.stopped && _startOperation == null) {
       return;
     }
+    _generation++;
+    _stopRequested = true;
     state = CoreState.stopping;
     final handle = _handle;
+    final starting = _startOperation;
     try {
       handle?.kill();
       if (handle != null) {
         await handle.exitCode.timeout(const Duration(seconds: 3), onTimeout: () => -1);
       }
+      if (starting != null) {
+        try {
+          await starting.timeout(const Duration(seconds: 3));
+        } on TimeoutException {
+          // Cleanup below still removes the temporary config and restores the
+          // proxy even if a launcher is stuck.
+        }
+      }
     } finally {
       await _cleanupAfterFailure();
       state = CoreState.stopped;
+      _stopRequested = false;
       _logger.info('core', 'Core process stopped');
     }
   }
 
   Future<CoreStartResult> _failure(FailureCode code, String message) async {
     lastFailure = code;
-    state = CoreState.failed;
-    _logger.error('core', message, errorCode: code.wireCode);
+    if (_stopRequested) {
+      state = CoreState.stopped;
+      _logger.info('core', 'Core start cancelled.');
+    } else {
+      state = CoreState.failed;
+      _logger.error('core', message, errorCode: code.wireCode);
+    }
     await _cleanupAfterFailure();
     return CoreStartResult.failure(code);
+  }
+
+  void _ensureStartCurrent(int generation) {
+    if (generation != _generation || _stopRequested) {
+      throw const CoreServiceException(
+        FailureCode.verifyTimeout,
+        'Core start was cancelled.',
+      );
+    }
   }
 
   Future<void> _verifyHash(File binary, String? expected) async {
