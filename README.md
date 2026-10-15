@@ -13,7 +13,7 @@ Simorgh is a Flutter desktop UI prototype for a privacy-first Cloudflare tunnel 
 
 ## Requirements
 
-- Flutter stable **3.35.5** (pinned in `.fvmrc`).
+- Flutter stable **3.47.5** (pinned in `.fvmrc`).
 - Dart SDK supplied by that Flutter release.
 - Windows desktop tooling for the target release. Linux can run tests and analyze Dart code, but cannot produce a Windows executable without Windows tooling.
 
