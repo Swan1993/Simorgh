@@ -1,61 +1,61 @@
 # Simorgh
 
-Simorgh is a Flutter desktop UI prototype for a privacy-first Cloudflare tunnel client. It is based on `Simorgh_PROMPTS.md` and the supplied Stitch screens. The current milestone is deliberately UI-only: the scanner, relays, diagnostics and AI actions use mock data and do not make network calls.
+Simorgh is a Flutter desktop UI prototype for a privacy-first Cloudflare tunnel client. It is based on `Simorgh_PROMPTS.md` and the supplied Stitch screens. The current milestone is UI-only: scanner, relays, diagnostics and AI actions use mock data and make no network calls.
 
-## Scope
+## Features
 
-- Dark desktop shell with a navigation rail.
+- Dark desktop shell with navigation rail.
 - Home flow: Idle → Scanning → Connecting → Connected, plus a simulated failure state.
-- Live mock IP scan table, progress, telemetry and stage chips.
+- Mock IP scan table, progress, telemetry and stage chips.
 - Relay overview, selectable diagnostic console, AI settings and routing settings.
-- Persian (default), English and Hindi localization with RTL support for Persian and Hindi.
-- No real API key, Cloudflare token, proxy change, TUN adapter or sidecar process is included.
+- Persian (default), English and Hindi localization. Persian uses RTL; Hindi and English use LTR.
+
+Real sing-box/Xray, Cloudflare Worker deployment, TUN, proxy changes and AI API calls are not implemented yet.
 
 ## Requirements
 
-- Flutter stable **3.47.5** (pinned in `.fvmrc`).
-- Dart SDK supplied by that Flutter release.
-- Windows desktop tooling for the target release. Linux can run tests and analyze Dart code, but cannot produce a Windows executable without Windows tooling.
+- Flutter stable **3.47.5**, pinned in `.fvmrc`.
+- Windows desktop tooling for the Windows release.
 
-## Setup and run
+## Setup
 
-```bash
+```powershell
 flutter pub get
+```
+
+## Run
+
+```powershell
 flutter run -d windows
 ```
 
-Use the navigation rail to open Home, Relays, Console, AI Settings and Settings. The Home connect orb starts the fake scan flow. The `Force Fail` button previews diagnostics.
+Use the navigation rail to open Home, Relays, Console, AI Settings and Settings. The Home connect orb starts the fake scan flow. `Force Fail` previews diagnostics.
 
 ## Checks
 
-The project test command is:
+On Windows PowerShell, run the commands directly:
 
-```bash
-make test
+```powershell
+flutter analyze
+flutter test
 ```
 
-Static analysis:
+On Linux/macOS with GNU Make, the equivalent shortcuts are:
 
 ```bash
 make analyze
+make test
 ```
 
-After dependencies are cached, both commands run without network access. The container recipe uses the same test command:
+After `flutter pub get`, tests and analysis are offline-friendly. The Dockerfile pins the same Flutter version for reproducible CI.
 
-```bash
-docker build -t simorgh-test .
-docker run --rm simorgh-test
-```
-
-## Build / deploy
-
-On Windows with Flutter desktop enabled:
+## Build
 
 ```powershell
 flutter build windows --release
 ```
 
-Release output is under `build/windows/x64/runner/Release/`. Real networking, Worker deployment, TUN and secure secret storage are deferred to the next phase in `Simorgh_PROMPTS.md`.
+The release output is under `build/windows/x64/runner/Release/`.
 
 ## Security
 
