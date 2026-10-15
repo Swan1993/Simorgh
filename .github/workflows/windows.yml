@@ -1,0 +1,40 @@
+name: Windows release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.5'
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
+      - name: Build Windows release
+        run: flutter build windows --release
+      - name: Hash release files
+        shell: pwsh
+        run: |
+          $release = "build/windows/x64/runner/Release"
+          Get-ChildItem -File $release | Get-FileHash -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLowerInvariant())  $($_.Path.Substring((Resolve-Path $release).Path.Length + 1))" } |
+            Set-Content "$release/SHA256SUMS.txt" -Encoding utf8
+      - name: Upload portable release
+        uses: actions/upload-artifact@v4
+        with:
+          name: simorgh-windows-portable
+          path: build/windows/x64/runner/Release/
