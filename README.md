@@ -1,16 +1,19 @@
 # Simorgh
 
-Simorgh is a Flutter desktop UI prototype for a privacy-first Cloudflare tunnel client. It is based on `Simorgh_PROMPTS.md` and the supplied Stitch screens. The current milestone is UI-only: scanner, relays, diagnostics and AI actions use mock data and make no network calls.
+Simorgh is a Flutter desktop client for a privacy-first Cloudflare relay workflow. It is based on `Simorgh_PROMPTS.md` and the supplied Stitch screens. The UI still contains a safe mock/demo flow, while the service layer now provides opt-in real implementations behind injectable interfaces.
 
 ## Features
 
 - Dark desktop shell with navigation rail.
 - Home flow: Idle → Scanning → Connecting → Connected, plus a simulated failure state.
-- Mock IP scan table, progress, telemetry and stage chips.
+- Mock IP scan table, progress, telemetry and stage chips, plus a real TCP/TLS scanner service.
 - Relay overview, selectable diagnostic console, AI settings and routing settings.
+- Secure secrets, rotating JSONL logs, sing-box config/process lifecycle, Cloudflare Worker deployment, health checks, fallback config updates and auto-reconnect policy.
 - Persian (default), English and Hindi localization. Persian uses RTL; Hindi and English use LTR.
 
-Real sing-box/Xray, Cloudflare Worker deployment, TUN, proxy changes and AI API calls are not implemented yet.
+The real services are not enabled by the demo UI by default. A verified sing-box binary,
+relay configuration, user credentials and explicit Windows permissions are required before
+using them. TUN/Wintun and a signed core distribution are not bundled in this repository.
 
 ## Requirements
 
@@ -29,7 +32,7 @@ flutter pub get
 flutter run -d windows
 ```
 
-Use the navigation rail to open Home, Relays, Console, AI Settings and Settings. The Home connect orb starts the fake scan flow. `Force Fail` previews diagnostics.
+Use the navigation rail to open Home, Relays, Console, AI Settings and Settings. The Home connect orb starts the safe demo flow. `Force Fail` previews diagnostics. Production services can be composed through `ConnectionOrchestrator` without putting credentials in widgets.
 
 ## Checks
 
@@ -70,4 +73,4 @@ Inno Setup 6 after the release build to create a per-user installer under
 
 ## Security
 
-Never put Cloudflare tokens, AI keys, UUIDs or private configuration in this repository. The current UI uses placeholders only. Future services must use Windows Credential Manager and redact logs before diagnostic export or AI requests.
+Never put Cloudflare tokens, AI keys, UUIDs or private configuration in this repository. Store credentials through `flutter_secure_storage`/Windows Credential Manager, use the redacted `LogService`, verify a core SHA-256 before launch, and review all AI payloads before sending them. `.env.example` contains placeholders only.
