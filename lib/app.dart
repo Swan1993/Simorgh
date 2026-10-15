@@ -65,7 +65,7 @@ class _TitleBar extends StatelessWidget {
   const _TitleBar({required this.strings});
   final AppStrings strings;
   @override
-  Widget build(BuildContext context) => Container(height: 48, padding: const EdgeInsets.symmetric(horizontal: 18), decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.outline))), child: Row(children: [const Icon(Icons.flight_takeoff_rounded, color: AppColors.cyan), const SizedBox(width: 10), Text('${strings.appName} • v0.1.0', style: Theme.of(context).textTheme.titleSmall), const Spacer(), const Icon(Icons.circle, size: 8, color: AppColors.green), const SizedBox(width: 6), Text(strings.edgeSynced, style: Theme.of(context).textTheme.labelSmall), const SizedBox(width: 24), TextButton(onPressed: () {}, child: Text(strings.debugOff)), IconButton(onPressed: () {}, icon: const Icon(Icons.remove_rounded)), IconButton(onPressed: () {}, icon: const Icon(Icons.crop_square_rounded)), IconButton(onPressed: () {}, icon: const Icon(Icons.close_rounded))]));
+  Widget build(BuildContext context) => Container(height: 48, padding: const EdgeInsets.symmetric(horizontal: 18), decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.outline))), child: Row(children: [const Icon(Icons.flight_takeoff_rounded, color: AppColors.cyan), const SizedBox(width: 10), Text('${strings.appName} • v0.1.0', style: Theme.of(context).textTheme.titleSmall), const Spacer(), const Icon(Icons.circle, size: 8, color: AppColors.green), const SizedBox(width: 6), Text(strings.edgeSynced, style: Theme.of(context).textTheme.labelSmall)]));
 }
 
 class _StatusFooter extends StatelessWidget {
