@@ -19,7 +19,7 @@ class Redactor {
     caseSensitive: false,
   );
   static final RegExp _bearerToken = RegExp(
-    r'(\bBearer\s+)[A-Za-z0-9._~+/=-]+',
+    r'(\bBearer\s+)(?!Bearer\b)[A-Za-z0-9._~+/=-]+',
     caseSensitive: false,
   );
   static final RegExp _keyValue = RegExp(
