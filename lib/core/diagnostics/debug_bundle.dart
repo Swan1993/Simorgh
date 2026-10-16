@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import '../failures/failure_code.dart';
 import '../logging/log_entry.dart';
+import '../logging/redactor.dart';
 
 class DebugBundle {
   const DebugBundle({
@@ -12,6 +15,7 @@ class DebugBundle {
     this.sanitizedConfig = const <String, Object?>{},
     this.networkChecks = const <String, Object?>{},
     this.coreStderrTail = const <String>[],
+    this.redactor,
   });
   final String version;
   final String stage;
@@ -22,8 +26,9 @@ class DebugBundle {
   final Map<String, Object?> sanitizedConfig;
   final Map<String, Object?> networkChecks;
   final List<String> coreStderrTail;
+  final Redactor? redactor;
 
-  String toMarkdown() =>
+  String toMarkdown({Redactor? overrideRedactor}) =>
       '''## Simorgh Debug Bundle
 - Version: $version
 - Stage: $stage
@@ -37,18 +42,26 @@ ${failure.localized().title}
 ${logs.map((entry) => '- ${entry.toHumanReadable()}').join('\n')}
 
 ### Scan summary
-${scanSummary.isEmpty ? 'Not available' : scanSummary}
+${_safe(scanSummary, overrideRedactor)}
 
 ### Sanitized config
-${sanitizedConfig.isEmpty ? 'Not available' : sanitizedConfig}
+${_safe(sanitizedConfig, overrideRedactor)}
 
 ### Network checks
-${networkChecks.isEmpty ? 'Not available' : networkChecks}
+${_safe(networkChecks, overrideRedactor)}
 
 ### Core stderr tail
-${coreStderrTail.isEmpty ? 'Not available' : coreStderrTail.join('\n')}
+${_safe(coreStderrTail, overrideRedactor)}
 
 ### Task for IDE
 Fix the above issue, identify the responsible service, add a regression test, and update the FailureCode mapping if needed.
 ''';
+
+  String _safe(Object value, Redactor? overrideRedactor) {
+    if (value is Map && value.isEmpty || value is Iterable && value.isEmpty) {
+      return 'Not available';
+    }
+    final encoded = jsonEncode(value);
+    return (overrideRedactor ?? redactor)?.redact(encoded) ?? encoded;
+  }
 }

@@ -46,5 +46,6 @@ void main() {
     expect((await repository.list()).single.uuid, 'uuid-secret');
     await repository.setActive('relay-1');
     expect((await repository.list()).single.active, isTrue);
+    expect((await repository.active())?.id, 'relay-1');
   });
 }

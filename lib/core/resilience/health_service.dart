@@ -42,19 +42,21 @@ class HealthService {
   final void Function(HealthResult result)? _onResult;
   final void Function()? _onUnhealthy;
   Timer? _timer;
-  bool _checking = false;
+  Future<HealthResult>? _inflight;
 
   Future<HealthResult> checkOnce() async {
-    if (_checking) return const HealthResult(healthy: true, latency: Duration.zero);
-    _checking = true;
-    try {
+    final inflight = _inflight;
+    if (inflight != null) return inflight;
+    final operation = () async {
       final result = await _transport.check(_endpoint, timeout: timeout);
       _onResult?.call(result);
       if (!result.healthy) _onUnhealthy?.call();
       return result;
-    } finally {
-      _checking = false;
-    }
+    }();
+    _inflight = operation;
+    return operation.whenComplete(() {
+      if (identical(_inflight, operation)) _inflight = null;
+    });
   }
 
   void start() {

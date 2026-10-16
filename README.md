@@ -1,19 +1,20 @@
 # Simorgh
 
-Simorgh is a Flutter desktop client for a privacy-first Cloudflare relay workflow. It is based on `Simorgh_PROMPTS.md` and the supplied Stitch screens. The UI still contains a safe mock/demo flow, while the service layer now provides opt-in real implementations behind injectable interfaces.
+Simorgh is a Windows-focused Flutter desktop client for a privacy-first Cloudflare relay workflow. The production composition root connects Home to secure storage, relay persistence, the real scanner, sing-box lifecycle, health checks and Windows proxy cleanup. A no-services `SimorghApp()` remains available for widget previews.
 
 ## Features
 
 - Dark desktop shell with navigation rail.
 - Home flow: Idle → Scanning → Connecting → Connected, plus a simulated failure state.
-- Mock IP scan table, progress, telemetry and stage chips, plus a real TCP/TLS scanner service.
+- Live IP scan events, progress, telemetry and stage chips when an active relay and verified core are configured, plus a real TCP/TLS scanner service.
 - Relay overview, selectable diagnostic console, AI settings and routing settings.
 - Secure secrets, rotating JSONL logs, sing-box config/process lifecycle, Cloudflare Worker deployment, health checks, fallback config updates and auto-reconnect policy.
 - Persian (default), English and Hindi localization. Persian uses RTL; Hindi and English use LTR.
 
-The real services are not enabled by the demo UI by default. A verified sing-box binary,
-relay configuration, user credentials and explicit Windows permissions are required before
-using them. TUN/Wintun and a signed core distribution are not bundled in this repository.
+A verified `sing-box.exe`, relay configuration, user credentials and explicit Windows
+permissions are required before using the real path. TUN/Wintun and a signed core
+distribution are not bundled in this repository. The current real mode uses the Windows
+system proxy and restores it on disconnect, failure and tray exit.
 
 ## Requirements
 
@@ -32,7 +33,17 @@ flutter pub get
 flutter run -d windows
 ```
 
-Use the navigation rail to open Home, Relays, Console, AI Settings and Settings. The Home connect orb starts the safe demo flow. `Force Fail` previews diagnostics. Production services can be composed through `ConnectionOrchestrator` without putting credentials in widgets.
+Use Relays → Add relay to store a relay hostname, port, UUID and WebSocket path securely.
+Mark one relay active, place the verified core binary and its 64-character hash manifest
+in the application-support core directory, then press Connect. Home subscribes to real
+session events; Cancel/Disconnect stops scanning, sing-box and the system proxy.
+
+The resolver expects these files below the Windows application-support directory:
+
+```text
+data/core/sing-box.exe
+data/core/sing-box.sha256
+```
 
 ## Checks
 

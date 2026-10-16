@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'debug_bundle.dart';
+import '../logging/redactor.dart';
 
 class AiDiagnosis {
   const AiDiagnosis({required this.rootCause, required this.evidence, required this.suggestedFix, required this.confidence, this.codeChangeHint});
@@ -27,17 +28,18 @@ abstract interface class AiClient {
 }
 
 class OpenAiCompatibleClient implements AiClient {
-  OpenAiCompatibleClient({required this.baseUrl, required this.apiKey, required this.model, HttpClient? client}) : _client = client ?? HttpClient();
+  OpenAiCompatibleClient({required this.baseUrl, required this.apiKey, required this.model, this.redactor, HttpClient? client}) : _client = client ?? HttpClient();
   final String baseUrl;
   final String apiKey;
   final String model;
+  final Redactor? redactor;
   final HttpClient _client;
 
   @override
   Future<AiDiagnosis> analyze(DebugBundle bundle) async {
     if (apiKey.trim().isEmpty) throw const AiClientException('AI API key is not configured.');
     final endpoint = Uri.parse(baseUrl.endsWith('/') ? '${baseUrl}chat/completions' : '$baseUrl/chat/completions');
-    final request = await _client.postUrl(endpoint);
+    final request = await _client.postUrl(endpoint).timeout(const Duration(seconds: 15));
     request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiKey');
     request.headers.contentType = ContentType.json;
     request.write(jsonEncode(<String, Object?>{
@@ -46,7 +48,7 @@ class OpenAiCompatibleClient implements AiClient {
       'response_format': <String, String>{'type': 'json_object'},
       'messages': <Object?>[
         <String, String>{'role': 'system', 'content': 'Analyze the redacted diagnostic bundle. Return JSON with root_cause, evidence, suggested_fix, code_change_hint and confidence between 0 and 1.'},
-        <String, String>{'role': 'user', 'content': bundle.toMarkdown()},
+        <String, String>{'role': 'user', 'content': bundle.toMarkdown(overrideRedactor: redactor)},
       ],
     }));
     final response = await request.close().timeout(const Duration(seconds: 30));

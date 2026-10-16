@@ -24,6 +24,7 @@ class CoreLaunchConfig {
     this.localSocksPort = 10808,
     this.localHttpPort = 10809,
     this.useSystemProxy = false,
+    this.verifyLocalPort = false,
   });
 
   final String binaryPath;
@@ -32,6 +33,7 @@ class CoreLaunchConfig {
   final int localSocksPort;
   final int localHttpPort;
   final bool useSystemProxy;
+  final bool verifyLocalPort;
 }
 
 class CoreConfigBuilder {
@@ -56,6 +58,13 @@ class CoreConfigBuilder {
           'listen': '127.0.0.1',
           'listen_port': launch.localSocksPort,
         },
+        if (launch.localHttpPort != launch.localSocksPort)
+          <String, Object?>{
+            'type': 'mixed',
+            'tag': 'http-in',
+            'listen': '127.0.0.1',
+            'listen_port': launch.localHttpPort,
+          },
       ],
       'outbounds': <Object?>[
         <String, Object?>{

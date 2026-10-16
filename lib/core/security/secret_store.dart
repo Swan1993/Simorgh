@@ -5,9 +5,9 @@ abstract final class SecretKeys {
   static const cloudflareApiToken = 'cloudflare_api_token';
   static const cloudflareAccountId = 'cloudflare_account_id';
   static const aiApiKey = 'ai_api_key';
+  static const all = <String>[cloudflareApiToken, cloudflareAccountId, aiApiKey];
 }
 
-/// Minimal storage contract used by services and easy to replace in tests.
 abstract interface class SecretStore {
   Future<String?> read(String key);
   Future<void> write(String key, String value);
@@ -15,27 +15,28 @@ abstract interface class SecretStore {
   Future<void> clear();
 }
 
-/// In-memory implementation for unit tests and preview mode.
 class InMemorySecretStore implements SecretStore {
   final Map<String, String> _values = <String, String>{};
 
   @override
-  Future<String?> read(String key) async => _values[key];
+  Future<String?> read(String key) async {
+    _validateKey(key);
+    return _values[key];
+  }
 
   @override
   Future<void> write(String key, String value) async {
-    if (key.trim().isEmpty) {
-      throw ArgumentError.value(key, 'key', 'Secret key cannot be empty.');
+    _validateKey(key);
+    if (value.trim().isEmpty) {
+      _values.remove(key);
+    } else {
+      _values[key] = value;
     }
-    if (value.isEmpty) {
-      await delete(key);
-      return;
-    }
-    _values[key] = value;
   }
 
   @override
   Future<void> delete(String key) async {
+    _validateKey(key);
     _values.remove(key);
   }
 
@@ -43,9 +44,8 @@ class InMemorySecretStore implements SecretStore {
   Future<void> clear() async => _values.clear();
 }
 
-/// Platform-backed implementation. On Windows, flutter_secure_storage uses
-/// the Windows Credential Manager; other supported platforms use their native
-/// secure key store.
+/// On Windows this uses the native Windows Credential Manager through
+/// flutter_secure_storage. It intentionally exposes no logging hooks.
 class SecureSecretStore implements SecretStore {
   SecureSecretStore({FlutterSecureStorage? storage})
     : _storage = storage ?? FlutterSecureStorage();
@@ -53,14 +53,16 @@ class SecureSecretStore implements SecretStore {
   final FlutterSecureStorage _storage;
 
   @override
-  Future<String?> read(String key) => _storage.read(key: key);
+  Future<String?> read(String key) async {
+    _validateKey(key);
+    final value = await _storage.read(key: key);
+    return value == null || value.trim().isEmpty ? null : value;
+  }
 
   @override
   Future<void> write(String key, String value) async {
-    if (key.trim().isEmpty) {
-      throw ArgumentError.value(key, 'key', 'Secret key cannot be empty.');
-    }
-    if (value.isEmpty) {
+    _validateKey(key);
+    if (value.trim().isEmpty) {
       await delete(key);
       return;
     }
@@ -68,8 +70,17 @@ class SecureSecretStore implements SecretStore {
   }
 
   @override
-  Future<void> delete(String key) => _storage.delete(key: key);
+  Future<void> delete(String key) async {
+    _validateKey(key);
+    await _storage.delete(key: key);
+  }
 
   @override
   Future<void> clear() => _storage.deleteAll();
+}
+
+void _validateKey(String key) {
+  if (key.trim().isEmpty) {
+    throw ArgumentError.value(key, 'key', 'Secret key cannot be empty.');
+  }
 }

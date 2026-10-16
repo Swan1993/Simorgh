@@ -31,6 +31,14 @@ class RelayRepository {
     return List<RelayConfig>.unmodifiable(relays);
   }
 
+  Future<RelayConfig?> active() async {
+    final relays = await list();
+    for (final relay in relays) {
+      if (relay.active) return relay;
+    }
+    return relays.length == 1 ? relays.single : null;
+  }
+
   Future<void> save(RelayConfig relay) async {
     final metadata = await _readMetadata();
     final secretKey = _secretKey(relay.id);

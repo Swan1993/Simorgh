@@ -21,23 +21,28 @@ class CloudflareDeployService {
   final Random _random;
 
   Future<CloudflareDeploymentResult> deploy(CloudflareDeployRequest request) async {
-    final validation = _validate(request);
-    if (validation != null) return _fail(validation, 'Deployment input is invalid.');
-    _logger.info('cloudflare', 'Validating API token for relay deployment.');
-    final verification = await _api.get('/user/tokens/verify', apiToken: request.apiToken);
-    if (!verification.ok) return _fail(FailureCode.tokenInvalid, 'Cloudflare API token verification failed.');
+    try {
+      final validation = _validate(request);
+      if (validation != null) return _fail(validation, 'Deployment input is invalid.');
+      _logger.info('cloudflare', 'Validating API token for relay deployment.');
+      final verification = await _api.get('/user/tokens/verify', apiToken: request.apiToken);
+      if (!verification.ok) return _fail(FailureCode.tokenInvalid, 'Cloudflare API token verification failed.');
 
-    final scriptName = request.scriptName.trim();
-    final path = '/${_randomSegment(24)}';
-    final script = _workerScript(path, request.workerScript ?? defaultRelayWorkerScript);
-    _logger.info('cloudflare', 'Uploading Worker script.', metadata: {'scriptName': scriptName});
-    final upload = await _api.putWorkerScript('/accounts/${request.accountId.trim()}/workers/scripts/$scriptName', apiToken: request.apiToken, script: script);
-    if (!upload.ok) return _fail(FailureCode.workerBlockedByCloudflare, 'Cloudflare rejected the Worker deployment.');
+      final scriptName = request.scriptName.trim();
+      final path = '/${_randomSegment(24)}';
+      final uuid = _uuid();
+      final script = _workerScript(path, uuid, request.workerScript ?? defaultRelayWorkerScript);
+      _logger.info('cloudflare', 'Uploading Worker script.', metadata: {'scriptName': scriptName});
+      final upload = await _api.putWorkerScript('/accounts/${request.accountId.trim()}/workers/scripts/$scriptName', apiToken: request.apiToken, script: script);
+      if (!upload.ok) return _fail(FailureCode.workerBlockedByCloudflare, 'Cloudflare rejected the Worker deployment.');
 
-    final hostname = _hostname(upload.result, scriptName);
-    final relay = RelayConfig(id: _randomSegment(16), name: request.name.trim(), hostname: hostname, uuid: _uuid(), path: path);
-    _logger.info('cloudflare', 'Worker relay deployed.', metadata: {'relayId': relay.id, 'hostname': relay.hostname});
-    return CloudflareDeploymentResult.success(relay);
+      final hostname = _hostname(upload.result, scriptName);
+      final relay = RelayConfig(id: _randomSegment(16), name: request.name.trim(), hostname: hostname, uuid: uuid, path: path);
+      _logger.info('cloudflare', 'Worker relay deployed.', metadata: {'relayId': relay.id, 'hostname': relay.hostname});
+      return CloudflareDeploymentResult.success(relay);
+    } on Object catch (error) {
+      return _fail(FailureCode.workerBlockedByCloudflare, 'Cloudflare deployment request failed: $error');
+    }
   }
 
   FailureCode? _validate(CloudflareDeployRequest request) {
@@ -58,14 +63,16 @@ class CloudflareDeployService {
     return CloudflareDeploymentResult.failure(code);
   }
 
-  String _workerScript(String path, String template) => 'const EXPECTED_PATH = ${_quote(path)};\n$template';
+  String _workerScript(String path, String uuid, String template) => template.replaceAll('__SIMORGH_PATH__', path).replaceAll('__SIMORGH_UUID__', uuid);
 
   String _hostname(Object? result, String scriptName) {
-    if (result is Map && result['url'] is String && (result['url'] as String).isNotEmpty) return result['url'] as String;
+    if (result is Map && result['url'] is String && (result['url'] as String).isNotEmpty) {
+      final value = result['url'] as String;
+      final parsed = Uri.tryParse(value.contains('://') ? value : 'https://$value');
+      if (parsed?.host.isNotEmpty == true) return parsed!.host;
+    }
     return '$scriptName.workers.dev';
   }
-
-  String _quote(String value) => '"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"';
 
   String _randomSegment(int length) {
     const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';

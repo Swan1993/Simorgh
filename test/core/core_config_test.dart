@@ -11,9 +11,11 @@ void main() {
 
   test('builds a validated sing-box config with local mixed inbound', () {
     final config = CoreConfigBuilder().build(launch);
-    final inbound = (config['inbounds']! as List<Object?>).single as Map<String, Object?>;
+    final inbounds = config['inbounds']! as List<Object?>;
+    final inbound = inbounds.first as Map<String, Object?>;
     final outbound = (config['outbounds']! as List<Object?>).first as Map<String, Object?>;
     expect(inbound['listen_port'], 10808);
+    expect(inbounds.length, 2);
     expect(outbound['server'], 'relay.example.test');
     expect(outbound['server_port'], 443);
     expect(outbound['uuid'], 'uuid-1');

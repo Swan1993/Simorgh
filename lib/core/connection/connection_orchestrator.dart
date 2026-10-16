@@ -32,7 +32,7 @@ class ConnectionOrchestrator {
 
   Stream<OrchestratorEvent> get events => _events.stream;
 
-  Future<FailureCode?> connect({required ScanOptions scanOptions, required String coreBinaryPath, required String relayServerName, required String relayUuid, int relayPort = 443, String relayPath = '/', String? expectedCoreSha256, bool useSystemProxy = true}) async {
+  Future<FailureCode?> connect({required ScanOptions scanOptions, required String coreBinaryPath, required String relayServerName, required String relayUuid, int relayPort = 443, String relayPath = '/', String? expectedCoreSha256, bool useSystemProxy = true, bool verifyLocalPort = false}) async {
     _cancelled = false;
     _emit(const OrchestratorEvent(stage: OrchestratorStage.preparing));
     try {
@@ -53,7 +53,7 @@ class ConnectionOrchestrator {
       final best = summary.best;
       if (best == null) return _fail(FailureCode.allIpsBlocked, 'No clean candidate IP was found.');
       _emit(const OrchestratorEvent(stage: OrchestratorStage.buildingConfig, progress: 80));
-      final config = CoreLaunchConfig(binaryPath: coreBinaryPath, expectedSha256: expectedCoreSha256, useSystemProxy: useSystemProxy, endpoint: CoreEndpoint(server: best.ip, serverName: relayServerName, port: relayPort, uuid: relayUuid, path: relayPath));
+      final config = CoreLaunchConfig(binaryPath: coreBinaryPath, expectedSha256: expectedCoreSha256, useSystemProxy: useSystemProxy, verifyLocalPort: verifyLocalPort, endpoint: CoreEndpoint(server: best.ip, serverName: relayServerName, port: relayPort, uuid: relayUuid, path: relayPath));
       _emit(const OrchestratorEvent(stage: OrchestratorStage.startingCore, progress: 88));
       final started = await core.start(config);
       if (_cancelled) {
@@ -92,6 +92,7 @@ class ConnectionOrchestrator {
   }
 
   Future<FailureCode?> _fail(FailureCode code, String message) async {
+    await core.stop();
     logger.error('connection', message, errorCode: code.wireCode);
     final bundle = DebugBundle(version: '0.1.0', stage: 'connection', failure: code, logs: logger.entries);
     _emit(OrchestratorEvent(stage: OrchestratorStage.failed, failure: code, debugBundle: bundle));

@@ -92,6 +92,9 @@ class CoreService {
       _listenToOutput(handle.stdout, LogLevel.info, 'core.stdout');
       _listenToOutput(handle.stderr, LogLevel.warning, 'core.stderr');
       unawaited(_watchExit(handle));
+      if (launch.verifyLocalPort) {
+        await _waitForLocalPort(launch.localHttpPort);
+      }
       state = CoreState.running;
       _logger.info('core', 'Core process started', metadata: {'config': '<TEMPORARY>'});
       return CoreStartResult.success(configFile.path);
@@ -155,6 +158,20 @@ class CoreService {
         'Core start was cancelled.',
       );
     }
+  }
+
+  Future<void> _waitForLocalPort(int port) async {
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (DateTime.now().isBefore(deadline)) {
+      try {
+        final socket = await Socket.connect('127.0.0.1', port, timeout: const Duration(milliseconds: 250));
+        socket.destroy();
+        return;
+      } on Object {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+    }
+    throw const CoreServiceException(FailureCode.verifyTimeout, 'Core local proxy did not become ready.');
   }
 
   Future<void> _verifyHash(File binary, String? expected) async {

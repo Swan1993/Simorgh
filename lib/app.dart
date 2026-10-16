@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'app/composition.dart';
 import 'core/theme.dart';
 import 'l10n/strings.dart';
 import 'pages/ai_settings_page.dart';
@@ -9,7 +10,8 @@ import 'pages/relays_page.dart';
 import 'pages/settings_page.dart';
 
 class SimorghApp extends StatefulWidget {
-  const SimorghApp({super.key});
+  const SimorghApp({this.services, super.key});
+  final AppServices? services;
   @override
   State<SimorghApp> createState() => _SimorghAppState();
 }
@@ -21,14 +23,15 @@ class _SimorghAppState extends State<SimorghApp> {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings(_locale);
-    return MaterialApp(debugShowCheckedModeBanner: false, title: strings.appName, theme: AppTheme.dark, locale: _locale, home: AppShell(strings: strings, onLocaleChanged: _setLocale));
+    return MaterialApp(debugShowCheckedModeBanner: false, title: strings.appName, theme: AppTheme.dark, locale: _locale, home: AppShell(strings: strings, onLocaleChanged: _setLocale, services: widget.services));
   }
 }
 
 class AppShell extends StatefulWidget {
-  const AppShell({required this.strings, required this.onLocaleChanged, super.key});
+  const AppShell({required this.strings, required this.onLocaleChanged, this.services, super.key});
   final AppStrings strings;
   final ValueChanged<Locale> onLocaleChanged;
+  final AppServices? services;
   @override
   State<AppShell> createState() => _AppShellState();
 }
@@ -39,7 +42,7 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final s = widget.strings;
-    final pages = <Widget>[HomePage(strings: s), RelaysPage(strings: s), ConsolePage(strings: s), AiSettingsPage(strings: s), SettingsPage(strings: s, onLocaleChanged: widget.onLocaleChanged)];
+    final pages = <Widget>[HomePage(strings: s, connectionSession: widget.services?.connection), RelaysPage(strings: s, repository: widget.services?.relays), ConsolePage(strings: s), AiSettingsPage(strings: s), SettingsPage(strings: s, onLocaleChanged: widget.onLocaleChanged)];
     final labels = [s.home, s.relays, s.console, s.aiSettings, s.settings];
     final icons = [Icons.home_rounded, Icons.hub_rounded, Icons.terminal_rounded, Icons.auto_awesome_rounded, Icons.settings_rounded];
     return Directionality(

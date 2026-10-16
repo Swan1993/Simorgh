@@ -28,11 +28,11 @@ class HttpCloudflareApi implements CloudflareApi {
 
   Future<CloudflareResponse> _request(String method, String path, {required String apiToken, String? body, String contentType = 'application/json'}) async {
     final uri = _baseUri.resolve(path.startsWith('/') ? path.substring(1) : path);
-    final request = await _client.openUrl(method, uri);
+    final request = await _client.openUrl(method, uri).timeout(const Duration(seconds: 15));
     request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
     request.headers.contentType = ContentType.parse(contentType);
     if (body != null) request.write(body);
-    final response = await request.close();
+    final response = await request.close().timeout(const Duration(seconds: 30));
     final text = await response.transform(utf8.decoder).join();
     if (contentType == 'application/javascript') {
       return CloudflareResponse(statusCode: response.statusCode, success: response.statusCode >= 200 && response.statusCode < 300, result: text);

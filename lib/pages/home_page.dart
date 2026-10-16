@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../core/connection/connection_flow.dart';
+import '../core/connection/connection_session.dart';
 import '../core/failures/failure_code.dart';
 import '../core/logging/log_service.dart';
+import '../core/scanner/ip_scanner.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
 import '../l10n/strings.dart';
@@ -12,8 +14,9 @@ import '../l10n/strings.dart';
 enum TunnelState { idle, scanning, connecting, connected, failed }
 
 class HomePage extends StatefulWidget {
-  const HomePage({required this.strings, super.key});
+  const HomePage({required this.strings, this.connectionSession, super.key});
   final AppStrings strings;
+  final ConnectionSession? connectionSession;
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -23,13 +26,18 @@ class _HomePageState extends State<HomePage> {
   Timer? _timer;
   int _progress = 0;
   int _runId = 0;
-  final _rows = <String>[
+  final _defaultRows = <String>[
     '104.16.132.48',
     '104.19.241.93',
     '172.67.12.18',
     '104.28.14.99',
     '162.159.36.1',
   ];
+  late List<String> _rows;
+  final Map<String, IpProbeResult> _probes = <String, IpProbeResult>{};
+  String? _selectedIp;
+  FailureCode? _failure;
+  StreamSubscription<ConnectionViewState>? _sessionSubscription;
   late final LogService _logger;
   late final MockConnectionFlow _flow;
   AppStrings get s => widget.strings;
@@ -39,6 +47,33 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _logger = LogService();
     _flow = MockConnectionFlow(logger: _logger);
+    _rows = List<String>.from(_defaultRows);
+    final session = widget.connectionSession;
+    if (session != null) {
+      _sessionSubscription = session.states.listen(_onSessionState);
+      _onSessionState(session.current);
+    }
+  }
+
+  void _onSessionState(ConnectionViewState state) {
+    if (!mounted) return;
+    final nextRows = state.candidates.map((item) => item.ip).toSet().toList(growable: false);
+    setState(() {
+      _state = switch (state.stage) {
+        ConnectionViewStage.idle => TunnelState.idle,
+        ConnectionViewStage.connected => TunnelState.connected,
+        ConnectionViewStage.failed => TunnelState.failed,
+        ConnectionViewStage.scanning => TunnelState.scanning,
+        _ => TunnelState.connecting,
+      };
+      _progress = state.progress;
+      _selectedIp = state.selectedIp;
+      _failure = state.failure;
+      if (nextRows.isNotEmpty) _rows = nextRows;
+      for (final result in state.candidates) {
+        _probes[result.ip] = result;
+      }
+    });
   }
 
   void _start() {
@@ -50,12 +85,18 @@ class _HomePageState extends State<HomePage> {
       _disconnect();
       return;
     }
+    final session = widget.connectionSession;
+    if (session != null) {
+      unawaited(session.connect());
+      return;
+    }
     _timer?.cancel();
     final runId = ++_runId;
     _flow.transition(ConnectionStage.preparing);
     setState(() {
       _state = TunnelState.scanning;
       _progress = 0;
+      _failure = null;
     });
     _flow.transition(ConnectionStage.scanning);
     _timer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
@@ -82,11 +123,16 @@ class _HomePageState extends State<HomePage> {
     _runId++;
     _timer?.cancel();
     _timer = null;
+    final session = widget.connectionSession;
+    if (session != null) {
+      unawaited(session.disconnect());
+    }
     if (!mounted) return;
     _flow.transition(ConnectionStage.idle);
     setState(() {
       _state = TunnelState.idle;
       _progress = 0;
+      _failure = null;
     });
   }
 
@@ -100,6 +146,7 @@ class _HomePageState extends State<HomePage> {
       FailureCode.tlsHandshakeReset,
       'Handshake timed out during the simulated connection.',
     );
+    _failure = FailureCode.tlsHandshakeReset;
     setState(() => _state = TunnelState.failed);
   }
 
@@ -120,6 +167,7 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _runId++;
     _timer?.cancel();
+    _sessionSubscription?.cancel();
     _logger.dispose();
     super.dispose();
   }
@@ -202,7 +250,7 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(width: 7),
                   Flexible(child: Text(
                     _state == TunnelState.failed
-                        ? 'Handshake timed out'
+                        ? (_failure?.messageFor(s.locale.languageCode).title ?? 'Connection failed')
                         : _state == TunnelState.connected
                         ? 'Connected to CF Edge • Frankfurt'
                         : 'Cloudflare Edge available',
@@ -324,9 +372,9 @@ class _HomePageState extends State<HomePage> {
               for (var i = 0; i < _rows.length; i++)
                 _IpRow(
                   ip: _rows[i],
-                  latency: '${24 + i * 7}ms',
-                  clean: i < 3,
-                  best: i == 0,
+                  latency: '${_probes[_rows[i]]?.latencyMs ?? 24 + i * 7}ms',
+                  clean: _probes[_rows[i]]?.isClean ?? i < 3,
+                  best: _selectedIp == null ? i == 0 : _selectedIp == _rows[i],
                 ),
             ],
           ),
