@@ -22,8 +22,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey<String>('connect-orb')));
     await tester.pump(const Duration(milliseconds: 4500));
 
-    expect(find.byKey(const ValueKey<String>('cancel-scan')), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey<String>('cancel-scan')));
+    final cancelButton = find.byKey(const ValueKey<String>('cancel-scan'));
+    expect(cancelButton, findsOneWidget);
+    await tester.ensureVisible(cancelButton);
+    await tester.tap(cancelButton);
     await tester.pump();
     expect(find.text('0%'), findsOneWidget);
 
