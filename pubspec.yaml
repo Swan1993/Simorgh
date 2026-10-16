@@ -26,3 +26,4 @@ flutter:
 assets:
   - assets/logo/logo.png
   - assets/logo/logo-icon.ico
+  - assets/core/windows-amd64/

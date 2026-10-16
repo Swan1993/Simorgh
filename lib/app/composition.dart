@@ -3,6 +3,7 @@ import 'dart:io';
 import '../core/app_directories.dart';
 import '../core/connection/connection_session.dart';
 import '../core/core_binary_resolver.dart';
+import '../core/core_binary_installer.dart';
 import '../core/core_service.dart';
 import '../core/logging/log_service.dart';
 import '../core/logging/log_sink.dart';
@@ -33,6 +34,7 @@ class AppServices {
 
   static Future<AppServices> create() async {
     final directories = await AppDirectories.create();
+    await CoreBinaryInstaller(directories).installBundledWindowsCore();
     final secrets = SecureSecretStore();
     final redactor = RedactorWithSecrets(secrets);
     await redactor.refresh();

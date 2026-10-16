@@ -38,6 +38,7 @@ Mark one relay active, place the verified core binary and its 64-character hash 
 in the application-support core directory, then press Connect. Home subscribes to real
 session events; Cancel/Disconnect stops scanning, sing-box and the system proxy.
 
+The app now installs the bundled signed-by-hash Windows core on first launch.
 The resolver expects these files below the Windows application-support directory:
 
 ```text
