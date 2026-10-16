@@ -21,7 +21,7 @@ class DiagnosticsService {
     _logger.info('diagnostics', 'Rule-based diagnosis completed.', errorCode: bundle.failure.wireCode);
     if (!useAi || _aiClient == null) return DiagnosticsReport(failure: bundle.failure, ruleBased: ruleBased);
     try {
-      final ai = await _aiClient!.analyze(bundle);
+      final ai = await _aiClient.analyze(bundle);
       _logger.ai('diagnostics', 'AI diagnosis completed.', errorCode: bundle.failure.wireCode);
       return DiagnosticsReport(failure: bundle.failure, ruleBased: ruleBased, ai: ai);
     } on Object catch (error) {

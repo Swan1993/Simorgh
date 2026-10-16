@@ -16,7 +16,7 @@ class CoreBinaryResolver {
     final binary = File(directories.coreBinary);
     if (!await binary.exists()) return null;
     final hashFile = File(directories.coreHash);
-    final hash = await hashFile.exists() ? _readHash(hashFile) : null;
+    final hash = await hashFile.exists() ? await _readHash(hashFile) : null;
     if (hash == null) return null;
     return CoreBinaryInfo(path: binary.path, sha256: hash);
   }

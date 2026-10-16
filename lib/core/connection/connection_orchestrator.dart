@@ -51,7 +51,7 @@ class ConnectionOrchestrator {
         return null;
       }
       final best = summary.best;
-      if (best == null) return _fail(FailureCode.allIpsBlocked, 'No clean candidate IP was found.');
+      if (best == null) return await _fail(FailureCode.allIpsBlocked, 'No clean candidate IP was found.');
       _emit(const OrchestratorEvent(stage: OrchestratorStage.buildingConfig, progress: 80));
       final config = CoreLaunchConfig(binaryPath: coreBinaryPath, expectedSha256: expectedCoreSha256, useSystemProxy: useSystemProxy, verifyLocalPort: verifyLocalPort, endpoint: CoreEndpoint(server: best.ip, serverName: relayServerName, port: relayPort, uuid: relayUuid, path: relayPath));
       _emit(const OrchestratorEvent(stage: OrchestratorStage.startingCore, progress: 88));
@@ -60,19 +60,19 @@ class ConnectionOrchestrator {
         await core.stop();
         return null;
       }
-      if (!started.isSuccess) return _fail(started.failure ?? FailureCode.coreCrash, 'Core failed to start.');
+      if (!started.isSuccess) return await _fail(started.failure ?? FailureCode.coreCrash, 'Core failed to start.');
       _emit(const OrchestratorEvent(stage: OrchestratorStage.verifyingConnection, progress: 94));
       final result = await _health?.checkOnce();
       if (_cancelled) {
         await core.stop();
         return null;
       }
-      if (result != null && !result.healthy) return _fail(FailureCode.verifyTimeout, 'Health verification failed.');
+      if (result != null && !result.healthy) return await _fail(FailureCode.verifyTimeout, 'Health verification failed.');
       _emit(const OrchestratorEvent(stage: OrchestratorStage.connected, progress: 100));
       _health?.start();
       return null;
     } on Object catch (error) {
-      return _fail(FailureCode.unknown, 'Connection flow failed: $error');
+      return await _fail(FailureCode.unknown, 'Connection flow failed: $error');
     }
   }
 

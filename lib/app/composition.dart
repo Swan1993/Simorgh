@@ -7,6 +7,7 @@ import '../core/core_binary_installer.dart';
 import '../core/core_service.dart';
 import '../core/logging/log_service.dart';
 import '../core/logging/log_sink.dart';
+import '../core/logging/redactor.dart';
 import '../core/relays/relay_repository.dart';
 import '../core/proxy_manager.dart';
 import '../core/scanner/ip_cache.dart';
