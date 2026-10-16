@@ -7,9 +7,11 @@ import 'package:simorgh/pages/home_page.dart';
 void main() {
   Widget buildPage() => MaterialApp(
     theme: AppTheme.dark,
-    home: Directionality(
-      textDirection: TextDirection.rtl,
-      child: HomePage(strings: AppStrings(const Locale('fa'))),
+    home: Scaffold(
+      body: Directionality(
+        textDirection: TextDirection.rtl,
+        child: HomePage(strings: AppStrings(const Locale('fa'))),
+      ),
     ),
   );
 
