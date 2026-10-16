@@ -12,6 +12,9 @@ try {
   if (-not $SkipAnalyze) { flutter analyze }
   if (-not $SkipTests) { flutter test }
   flutter build windows --release
+  if ($LASTEXITCODE -ne 0) {
+    throw "flutter build windows --release failed with exit code $LASTEXITCODE."
+  }
 
   $release = Join-Path $root 'build\windows\x64\runner\Release'
   $hashFile = Join-Path $release 'SHA256SUMS.txt'

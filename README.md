@@ -19,7 +19,10 @@ system proxy and restores it on disconnect, failure and tray exit.
 ## Requirements
 
 - Flutter stable **3.47.5**, pinned in `.fvmrc`.
-- Windows desktop tooling for the Windows release.
+- Windows desktop tooling for the Windows release: Visual Studio Desktop development
+  with C++, MSVC x64/x86 build tools, a Windows SDK, CMake tools, and the C++ ATL
+  component. The `flutter_secure_storage_windows` plugin requires ATL headers such
+  as `atlstr.h` to compile.
 
 ## Setup
 
@@ -63,6 +66,12 @@ make test
 ```
 
 After `flutter pub get`, tests and analysis are offline-friendly. The Dockerfile pins the same Flutter version for reproducible CI.
+
+If a Windows build reports `fatal error C1083: Cannot open include file: 'atlstr.h'`,
+open Visual Studio Installer → Modify and install **C++ ATL for latest v143 build
+tools (x86 & x64)** (`Microsoft.VisualStudio.Component.VC.ATL`), then run
+`flutter clean`, `flutter pub get` and the build again. Do not patch generated plugin
+files or disable secure storage to work around this missing toolchain component.
 
 ## Build
 
