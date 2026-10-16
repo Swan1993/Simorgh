@@ -39,5 +39,8 @@ class CoreBinaryInstaller {
     }
   }
 
-  Future<List<int>> _loadBytes(String asset) async => (await rootBundle.load(asset)).buffer.asUint8List();
+  Future<List<int>> _loadBytes(String asset) async {
+    final data = await rootBundle.load(asset);
+    return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+  }
 }
