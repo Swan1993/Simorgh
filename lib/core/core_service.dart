@@ -181,7 +181,7 @@ class CoreService {
     }
     final actual = sha256.convert(await binary.readAsBytes()).toString();
     if (actual.toLowerCase() != expected.trim().toLowerCase()) {
-      throw CoreServiceException(FailureCode.coreConfigInvalid, 'Core SHA-256 verification failed.');
+      throw const CoreServiceException(FailureCode.coreConfigInvalid, 'Core SHA-256 verification failed.');
     }
   }
 

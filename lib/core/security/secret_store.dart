@@ -48,7 +48,7 @@ class InMemorySecretStore implements SecretStore {
 /// flutter_secure_storage. It intentionally exposes no logging hooks.
 class SecureSecretStore implements SecretStore {
   SecureSecretStore({FlutterSecureStorage? storage})
-    : _storage = storage ?? FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
 
