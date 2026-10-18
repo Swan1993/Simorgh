@@ -46,7 +46,19 @@ class CloudflareDeployService {
         );
       }
 
+      final accountId = request.accountId.trim();
       final scriptName = request.scriptName.trim();
+      final subdomain = await _api.get(
+        '/accounts/$accountId/workers/subdomain',
+        apiToken: request.apiToken,
+      );
+      final accountSubdomain = _subdomain(subdomain.result);
+      if (!subdomain.ok || accountSubdomain == null) {
+        return _fail(
+          FailureCode.workerBlockedByCloudflare,
+          'Cloudflare workers.dev subdomain is not available for this account.',
+        );
+      }
       final path = '/${_randomSegment(24)}';
       final uuid = _uuid();
       final script = _workerScript(
@@ -60,7 +72,7 @@ class CloudflareDeployService {
         metadata: {'scriptName': scriptName},
       );
       final upload = await _api.putWorkerScript(
-        '/accounts/${request.accountId.trim()}/workers/scripts/$scriptName',
+        '/accounts/$accountId/workers/scripts/$scriptName',
         apiToken: request.apiToken,
         script: script,
       );
@@ -71,7 +83,7 @@ class CloudflareDeployService {
         );
       }
 
-      final hostname = _hostname(upload.result, scriptName);
+      final hostname = _hostname(upload.result, scriptName, accountSubdomain);
       final relay = RelayConfig(
         id: _randomSegment(16),
         name: request.name.trim(),
@@ -106,11 +118,15 @@ class CloudflareDeployService {
   }
 
   bool _isValidScriptName(String value) {
-    if (value.length > 63) return false;
+    if (value.isEmpty ||
+        value.length > 63 ||
+        value.startsWith('-') ||
+        value.endsWith('-')) {
+      return false;
+    }
     return value.codeUnits.every(
       (code) =>
           code == 45 ||
-          code == 95 ||
           code >= 48 && code <= 57 ||
           code >= 65 && code <= 90 ||
           code >= 97 && code <= 122,
@@ -126,7 +142,18 @@ class CloudflareDeployService {
       .replaceAll('__SIMORGH_PATH__', path)
       .replaceAll('__SIMORGH_UUID__', uuid);
 
-  String _hostname(Object? result, String scriptName) {
+  String? _subdomain(Object? result) {
+    if (result is String && result.trim().isNotEmpty) {
+      return result.trim();
+    }
+    if (result is Map && result['subdomain'] is String) {
+      final value = (result['subdomain'] as String).trim();
+      if (value.isNotEmpty) return value;
+    }
+    return null;
+  }
+
+  String _hostname(Object? result, String scriptName, String subdomain) {
     if (result is Map &&
         result['url'] is String &&
         (result['url'] as String).isNotEmpty) {
@@ -136,7 +163,7 @@ class CloudflareDeployService {
       );
       if (parsed?.host.isNotEmpty == true) return parsed!.host;
     }
-    return '$scriptName.workers.dev';
+    return '$scriptName.$subdomain.workers.dev';
   }
 
   String _randomSegment(int length) {

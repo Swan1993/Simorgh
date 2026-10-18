@@ -41,12 +41,14 @@ in the application-support core directory, then press Connect. Home subscribes t
 session events; Cancel/Disconnect stops scanning, sing-box and the system proxy.
 
 For automatic relay creation, open **Relays → Auto-deploy** and enter a Cloudflare API
-token, account ID, relay name and Worker script name. The app verifies the token,
-uploads the bundled VLESS-over-WebSocket Worker, generates the UUID and path, saves the
-relay, and marks the first relay active. The token and account ID are stored through
-the platform secure store; they are never written to relay metadata or logs. The token
-needs permission to edit Workers Scripts for the selected account, and the account must
-have a `workers.dev` subdomain available.
+token, account ID, relay name and Worker script name. The app verifies the token, reads
+the account's `workers.dev` subdomain, uploads the bundled VLESS-over-WebSocket Worker,
+generates the UUID and path, saves the relay with the full Worker hostname, and marks
+the first relay active. The token and account ID are stored through the platform secure
+store; they are never written to relay metadata or logs. The token needs permission to
+edit Workers Scripts for the selected account, and the account must have a `workers.dev`
+subdomain available. The Worker name must contain only letters, numbers and dashes and
+must not start or end with a dash.
 
 The app now installs the bundled signed-by-hash Windows core on first launch.
 The resolver expects these files below the Windows application-support directory:
