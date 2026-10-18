@@ -1,15 +1,26 @@
 import 'package:flutter/material.dart';
 
+import '../core/failures/failure_code.dart';
+import '../core/relays/cloudflare_deploy_service.dart';
 import '../core/relays/relay_models.dart';
 import '../core/relays/relay_repository.dart';
+import '../core/security/secret_store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
 import '../l10n/strings.dart';
 
 class RelaysPage extends StatefulWidget {
-  const RelaysPage({required this.strings, this.repository, super.key});
+  const RelaysPage({
+    required this.strings,
+    this.repository,
+    this.deployService,
+    this.secrets,
+    super.key,
+  });
   final AppStrings strings;
   final RelayRepository? repository;
+  final CloudflareDeployService? deployService;
+  final SecretStore? secrets;
 
   @override
   State<RelaysPage> createState() => _RelaysPageState();
@@ -60,6 +71,41 @@ class _RelaysPageState extends State<RelaysPage> {
     await _load();
   }
 
+  Future<void> _autoDeploy() async {
+    final repository = widget.repository;
+    final deployService = widget.deployService;
+    if (repository == null || deployService == null) {
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      builder: (context) => _AutoDeployDialog(
+        strings: widget.strings,
+        service: deployService,
+        secrets: widget.secrets,
+        onDeployed: (request, relay) async {
+          final firstRelay = _relays.isEmpty;
+          await repository.save(relay.copyWith(active: firstRelay));
+          if (firstRelay) {
+            await repository.setActive(relay.id);
+          }
+          final secrets = widget.secrets;
+          if (secrets != null) {
+            await secrets.write(
+              SecretKeys.cloudflareApiToken,
+              request.apiToken.trim(),
+            );
+            await secrets.write(
+              SecretKeys.cloudflareAccountId,
+              request.accountId.trim(),
+            );
+          }
+          await _load();
+        },
+      ),
+    );
+  }
+
   Future<void> _activate(RelayConfig relay) async {
     await widget.repository?.setActive(relay.id);
     await _load();
@@ -77,10 +123,23 @@ class _RelaysPageState extends State<RelaysPage> {
           PageHeader(
             title: 'Network Orchestration',
             subtitle: s.relaysSubtitle,
-            action: FilledButton.icon(
-              onPressed: hasRepository ? _addRelay : null,
-              icon: const Icon(Icons.add),
-              label: Text(s.addRelay),
+            action: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FilledButton.icon(
+                  onPressed: hasRepository ? _addRelay : null,
+                  icon: const Icon(Icons.add),
+                  label: Text(s.addRelay),
+                ),
+                const SizedBox(width: 10),
+                OutlinedButton.icon(
+                  onPressed: hasRepository && widget.deployService != null
+                      ? _autoDeploy
+                      : null,
+                  icon: const Icon(Icons.cloud_upload_outlined),
+                  label: const Text('Auto-deploy'),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),
@@ -141,6 +200,194 @@ class _RelaysPageState extends State<RelaysPage> {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _AutoDeployDialog extends StatefulWidget {
+  const _AutoDeployDialog({
+    required this.strings,
+    required this.service,
+    this.secrets,
+    required this.onDeployed,
+  });
+
+  final AppStrings strings;
+  final CloudflareDeployService service;
+  final SecretStore? secrets;
+  final Future<void> Function(
+    CloudflareDeployRequest request,
+    RelayConfig relay,
+  )
+  onDeployed;
+
+  @override
+  State<_AutoDeployDialog> createState() => _AutoDeployDialogState();
+}
+
+class _AutoDeployDialogState extends State<_AutoDeployDialog> {
+  final _name = TextEditingController();
+  final _scriptName = TextEditingController(text: 'simorgh-relay');
+  final _accountId = TextEditingController();
+  final _apiToken = TextEditingController();
+  bool _busy = false;
+  bool _success = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final secrets = widget.secrets;
+    if (secrets == null) return;
+    final values = await Future.wait<String?>([
+      secrets.read(SecretKeys.cloudflareAccountId),
+      secrets.read(SecretKeys.cloudflareApiToken),
+    ]);
+    if (!mounted) return;
+    _accountId.text = values[0] ?? '';
+    _apiToken.text = values[1] ?? '';
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _scriptName.dispose();
+    _accountId.dispose();
+    _apiToken.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final name = _name.text.trim();
+    final scriptName = _scriptName.text.trim();
+    final accountId = _accountId.text.trim();
+    final apiToken = _apiToken.text.trim();
+    if (name.isEmpty ||
+        scriptName.isEmpty ||
+        accountId.isEmpty ||
+        apiToken.isEmpty) {
+      setState(() => _error = 'Complete all fields before deploying.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final request = CloudflareDeployRequest(
+      name: name,
+      scriptName: scriptName,
+      accountId: accountId,
+      apiToken: apiToken,
+    );
+    try {
+      final result = await widget.service.deploy(request);
+      if (!result.isSuccess || result.relay == null) {
+        final failure = result.failure ?? FailureCode.unknown;
+        final message = FailureCodeCatalog.forLocale(
+          failure,
+          widget.strings.locale.languageCode,
+        );
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _error = '${message.title}: ${message.explanation}';
+          });
+        }
+        return;
+      }
+      await widget.onDeployed(request, result.relay!);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _success = true;
+        });
+      }
+    } on Object {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = 'Auto-deployment failed. Check the fields and try again.';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final completed = _success;
+    return AlertDialog(
+      title: const Text('Auto-deploy Cloudflare Worker'),
+      content: SingleChildScrollView(
+        child: SizedBox(
+          width: 440,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_busy) ...[
+                const LinearProgressIndicator(),
+                const SizedBox(height: 12),
+                const Text('Deploying Worker…'),
+                const SizedBox(height: 12),
+              ],
+              if (_error != null) ...[
+                Text(_error!, style: const TextStyle(color: AppColors.red)),
+                const SizedBox(height: 12),
+              ],
+              if (completed)
+                const Text(
+                  'Worker deployed and relay saved successfully.',
+                  style: TextStyle(color: AppColors.green),
+                )
+              else ...[
+                TextField(
+                  controller: _name,
+                  enabled: !_busy,
+                  decoration: const InputDecoration(labelText: 'Relay name'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _scriptName,
+                  enabled: !_busy,
+                  decoration: const InputDecoration(
+                    labelText: 'Worker script name',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _accountId,
+                  enabled: !_busy,
+                  decoration: const InputDecoration(
+                    labelText: 'Cloudflare account ID',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _apiToken,
+                  enabled: !_busy,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'API token'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.pop(context),
+          child: Text(completed ? 'Done' : widget.strings.cancel),
+        ),
+        if (!completed)
+          FilledButton(
+            onPressed: _busy ? null : _submit,
+            child: Text(_busy ? 'Deploying…' : 'Deploy'),
+          ),
+      ],
     );
   }
 }

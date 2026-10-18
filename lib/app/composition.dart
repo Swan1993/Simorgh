@@ -8,6 +8,8 @@ import '../core/core_service.dart';
 import '../core/logging/log_service.dart';
 import '../core/logging/log_sink.dart';
 import '../core/logging/redactor.dart';
+import '../core/relays/cloudflare_api.dart';
+import '../core/relays/cloudflare_deploy_service.dart';
 import '../core/relays/relay_repository.dart';
 import '../core/proxy_manager.dart';
 import '../core/scanner/ip_cache.dart';
@@ -23,7 +25,9 @@ class AppServices {
     required this.scanner,
     required this.core,
     required this.connection,
-  });
+    required this.cloudflareDeploy,
+    required HttpCloudflareApi cloudflareApi,
+  }) : _cloudflareApi = cloudflareApi;
 
   final AppDirectories directories;
   final LogService logger;
@@ -32,6 +36,8 @@ class AppServices {
   final IpScannerService scanner;
   final CoreService core;
   final ConnectionSession connection;
+  final CloudflareDeployService cloudflareDeploy;
+  final HttpCloudflareApi _cloudflareApi;
 
   static Future<AppServices> create() async {
     final directories = await AppDirectories.create();
@@ -51,7 +57,8 @@ class AppServices {
       cache: IpCandidateCache(path: directories.ipCache),
     );
     final proxy = WindowsSystemProxyManager(
-      snapshotPath: '${directories.data.path}${Platform.pathSeparator}proxy-snapshot.json',
+      snapshotPath:
+          '${directories.data.path}${Platform.pathSeparator}proxy-snapshot.json',
     );
     await proxy.recover();
     await proxy.restore();
@@ -63,6 +70,11 @@ class AppServices {
       core: core,
       logger: logger,
     );
+    final cloudflareApi = HttpCloudflareApi();
+    final cloudflareDeploy = CloudflareDeployService(
+      api: cloudflareApi,
+      logger: logger,
+    );
     return AppServices._(
       directories: directories,
       logger: logger,
@@ -71,6 +83,8 @@ class AppServices {
       scanner: scanner,
       core: core,
       connection: connection,
+      cloudflareApi: cloudflareApi,
+      cloudflareDeploy: cloudflareDeploy,
     );
   }
 
@@ -78,7 +92,11 @@ class AppServices {
     try {
       await connection.dispose();
     } finally {
-      await logger.dispose();
+      try {
+        _cloudflareApi.close();
+      } finally {
+        await logger.dispose();
+      }
     }
   }
 }

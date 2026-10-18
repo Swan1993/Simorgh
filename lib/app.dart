@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'app/composition.dart';
 import 'core/connection/connection_session.dart';
+import 'core/relays/cloudflare_deploy_service.dart';
 import 'core/theme.dart';
 import 'l10n/strings.dart';
 import 'pages/ai_settings_page.dart';
@@ -35,6 +36,7 @@ class _SimorghAppState extends State<SimorghApp> {
         strings: strings,
         onLocaleChanged: _setLocale,
         services: widget.services,
+        cloudflareDeployService: widget.services?.cloudflareDeploy,
       ),
     );
   }
@@ -45,11 +47,13 @@ class AppShell extends StatefulWidget {
     required this.strings,
     required this.onLocaleChanged,
     this.services,
+    this.cloudflareDeployService,
     super.key,
   });
   final AppStrings strings;
   final ValueChanged<Locale> onLocaleChanged;
   final AppServices? services;
+  final CloudflareDeployService? cloudflareDeployService;
   @override
   State<AppShell> createState() => _AppShellState();
 }
@@ -99,9 +103,16 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final s = widget.strings;
+    final cloudflareDeployService =
+        widget.cloudflareDeployService ?? widget.services?.cloudflareDeploy;
     final pages = <Widget>[
       HomePage(strings: s, connectionSession: widget.services?.connection),
-      RelaysPage(strings: s, repository: widget.services?.relays),
+      RelaysPage(
+        strings: s,
+        repository: widget.services?.relays,
+        deployService: cloudflareDeployService,
+        secrets: widget.services?.secrets,
+      ),
       ConsolePage(strings: s, logger: widget.services?.logger),
       AiSettingsPage(strings: s, secrets: widget.services?.secrets),
       SettingsPage(strings: s, onLocaleChanged: widget.onLocaleChanged),
@@ -145,9 +156,12 @@ class _AppShellState extends State<AppShell> {
                     ),
                     const VerticalDivider(width: 1),
                     Expanded(
-                      child: IndexedStack(
-                        index: _selectedIndex,
-                        children: pages,
+                      child: CloudflareDeployScope(
+                        service: cloudflareDeployService,
+                        child: IndexedStack(
+                          index: _selectedIndex,
+                          children: pages,
+                        ),
                       ),
                     ),
                   ],
@@ -165,6 +179,24 @@ class _AppShellState extends State<AppShell> {
       ),
     );
   }
+}
+
+class CloudflareDeployScope extends InheritedWidget {
+  const CloudflareDeployScope({
+    required this.service,
+    required super.child,
+    super.key,
+  });
+
+  final CloudflareDeployService? service;
+
+  static CloudflareDeployService? of(BuildContext context) => context
+      .dependOnInheritedWidgetOfExactType<CloudflareDeployScope>()
+      ?.service;
+
+  @override
+  bool updateShouldNotify(CloudflareDeployScope oldWidget) =>
+      oldWidget.service != service;
 }
 
 class _TitleBar extends StatelessWidget {

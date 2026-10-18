@@ -5,7 +5,11 @@ abstract final class SecretKeys {
   static const cloudflareApiToken = 'cloudflare_api_token';
   static const cloudflareAccountId = 'cloudflare_account_id';
   static const aiApiKey = 'ai_api_key';
-  static const all = <String>[cloudflareApiToken, cloudflareAccountId, aiApiKey];
+  static const all = <String>[
+    cloudflareApiToken,
+    cloudflareAccountId,
+    aiApiKey,
+  ];
 }
 
 abstract interface class SecretStore {
