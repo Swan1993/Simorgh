@@ -20,10 +20,8 @@ system proxy and restores it on disconnect, failure and tray exit.
 
 - Flutter stable **3.47.5**, pinned in `.fvmrc`.
 - Windows desktop tooling for the Windows release: Visual Studio Desktop development
-  with C++, MSVC x64/x86 build tools, a Windows SDK and CMake tools. Simorgh vendors
-  a small compatibility header for the conversion
-  wrappers used by `flutter_secure_storage_windows`, so the optional ATL headers
-  are not required for this repository's build.
+  with C++, MSVC x64/x86 build tools, a Windows SDK and CMake tools. The secure
+  storage plugin uses Windows DPAPI and does not require the optional ATL headers.
 
 ## Setup
 
@@ -68,11 +66,10 @@ make test
 
 After `flutter pub get`, tests and analysis are offline-friendly. The Dockerfile pins the same Flutter version for reproducible CI.
 
-The Windows secure-storage plugin is pinned through a local dependency override at
-`third_party/flutter_secure_storage_windows`. Its native implementation still uses
-Windows Credential Manager and Windows CNG; only the optional ATL string-conversion
-header is replaced with a local Win32 equivalent. Do not patch generated plugin
-files or disable secure storage to work around a toolchain issue.
+Secure values use the `get_x_storage_secure` plugin from the public Git repository.
+On Windows it stores user-scoped DPAPI blobs and does not require the ATL headers
+used by the removed ATL-dependent plugin. The Git dependency is
+locked to its resolved commit in `pubspec.lock`.
 
 ## Build
 
@@ -95,4 +92,4 @@ Inno Setup 6 after the release build to create a per-user installer under
 
 ## Security
 
-Never put Cloudflare tokens, AI keys, UUIDs or private configuration in this repository. Store credentials through `flutter_secure_storage`/Windows Credential Manager, use the redacted `LogService`, verify a core SHA-256 before launch, and review all AI payloads before sending them. `.env.example` contains placeholders only.
+Never put Cloudflare tokens, AI keys, UUIDs or private configuration in this repository. Store credentials through `get_x_storage_secure`/Windows DPAPI, use the redacted `LogService`, verify a core SHA-256 before launch, and review all AI payloads before sending them. `.env.example` contains placeholders only.

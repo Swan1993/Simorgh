@@ -1,4 +1,4 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:get_x_storage_secure/get_x_storage_secure.dart';
 
 /// Stable names for values that must never be stored in plain workspace files.
 abstract final class SecretKeys {
@@ -44,18 +44,19 @@ class InMemorySecretStore implements SecretStore {
   Future<void> clear() async => _values.clear();
 }
 
-/// On Windows this uses the native Windows Credential Manager through
-/// flutter_secure_storage. It intentionally exposes no logging hooks.
+/// Uses the platform-native secret store through get_x_storage_secure. On
+/// Windows its backend is user-scoped DPAPI. It intentionally exposes no
+/// logging hooks.
 class SecureSecretStore implements SecretStore {
-  SecureSecretStore({FlutterSecureStorage? storage})
-    : _storage = storage ?? const FlutterSecureStorage();
+  SecureSecretStore({SecureStorage? storage})
+    : _storage = storage ?? SecureStorage(namespace: 'simorgh');
 
-  final FlutterSecureStorage _storage;
+  final SecureStorage _storage;
 
   @override
   Future<String?> read(String key) async {
     _validateKey(key);
-    final value = await _storage.read(key: key);
+    final value = await _storage.read(key);
     return value == null || value.trim().isEmpty ? null : value;
   }
 
@@ -66,13 +67,13 @@ class SecureSecretStore implements SecretStore {
       await delete(key);
       return;
     }
-    await _storage.write(key: key, value: value);
+    await _storage.write(key, value);
   }
 
   @override
   Future<void> delete(String key) async {
     _validateKey(key);
-    await _storage.delete(key: key);
+    await _storage.delete(key);
   }
 
   @override
