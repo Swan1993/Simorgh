@@ -37,6 +37,7 @@ class _HomePageState extends State<HomePage> {
   final Map<String, IpProbeResult> _probes = <String, IpProbeResult>{};
   String? _selectedIp;
   FailureCode? _failure;
+  String? _sessionMessage;
   ConnectionViewStage _sessionStage = ConnectionViewStage.idle;
   int _testedCount = 0;
   int _totalCount = 0;
@@ -78,6 +79,7 @@ class _HomePageState extends State<HomePage> {
       _progress = state.progress;
       _selectedIp = state.selectedIp;
       _failure = state.failure;
+      _sessionMessage = state.message;
       _testedCount = state.testedCount;
       _totalCount = state.totalCount;
       _cleanCount = state.cleanCount;
@@ -192,6 +194,7 @@ class _HomePageState extends State<HomePage> {
 
   String get _connectionSummary {
     if (_state == TunnelState.failed) {
+      if (!_isPreview && _sessionMessage != null) return _sessionMessage!;
       return _failure?.messageFor(s.locale.languageCode).title ??
           'Connection failed';
     }

@@ -110,7 +110,7 @@ class ProductionConnectionSession implements ConnectionSession {
         const ConnectionViewState(
           stage: ConnectionViewStage.failed,
           failure: FailureCode.coreConfigInvalid,
-          message: 'No active relay is configured.',
+          message: 'No active relay is configured. Open Relays and add one before connecting.',
         ),
       );
       return;

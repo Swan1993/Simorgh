@@ -192,9 +192,10 @@ class _TitleBar extends StatelessWidget {
         children: [
           Image.asset(
             'assets/logo/logo.png',
-            width: 24,
-            height: 24,
+            width: 30,
+            height: 30,
             fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
             errorBuilder: (context, error, stackTrace) =>
                 const Icon(Icons.auto_awesome, color: AppColors.cyan),
           ),

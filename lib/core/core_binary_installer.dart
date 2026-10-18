@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 
 import 'app_directories.dart';
@@ -17,7 +18,11 @@ class CoreBinaryInstaller {
     if (bundledHash == null) return null;
     if (await executable.exists() && await hashFile.exists()) {
       final existing = await CoreBinaryResolver(directories).resolve();
-      if (existing != null && existing.sha256 == bundledHash) return existing;
+      if (existing != null &&
+          existing.sha256 == bundledHash &&
+          await _matchesHash(executable, bundledHash)) {
+        return existing;
+      }
     }
 
     final exeBytes = await _loadBytes('assets/core/windows-amd64/sing-box.exe');
@@ -27,6 +32,11 @@ class CoreBinaryInstaller {
     await File('${directories.core.path}${Platform.pathSeparator}libcronet.dll').writeAsBytes(dllBytes, flush: true);
     await hashFile.writeAsString('$bundledHash  sing-box.exe\n', flush: true);
     return CoreBinaryResolver(directories).resolve();
+  }
+
+  Future<bool> _matchesHash(File file, String expected) async {
+    final actual = sha256.convert(await file.readAsBytes()).toString();
+    return actual.toLowerCase() == expected.toLowerCase();
   }
 
   Future<String?> _readAssetHash() async {
