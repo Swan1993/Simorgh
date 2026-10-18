@@ -37,18 +37,23 @@ class _HomePageState extends State<HomePage> {
   final Map<String, IpProbeResult> _probes = <String, IpProbeResult>{};
   String? _selectedIp;
   FailureCode? _failure;
+  ConnectionViewStage _sessionStage = ConnectionViewStage.idle;
+  int _testedCount = 0;
+  int _totalCount = 0;
+  int _cleanCount = 0;
   StreamSubscription<ConnectionViewState>? _sessionSubscription;
   late final LogService _logger;
   late final MockConnectionFlow _flow;
   AppStrings get s => widget.strings;
+  bool get _isPreview => widget.connectionSession == null;
 
   @override
   void initState() {
     super.initState();
     _logger = LogService();
     _flow = MockConnectionFlow(logger: _logger);
-    _rows = List<String>.from(_defaultRows);
     final session = widget.connectionSession;
+    _rows = session == null ? List<String>.from(_defaultRows) : <String>[];
     if (session != null) {
       _sessionSubscription = session.states.listen(_onSessionState);
       _onSessionState(session.current);
@@ -57,8 +62,12 @@ class _HomePageState extends State<HomePage> {
 
   void _onSessionState(ConnectionViewState state) {
     if (!mounted) return;
-    final nextRows = state.candidates.map((item) => item.ip).toSet().toList(growable: false);
+    final nextRows = state.candidates
+        .map((item) => item.ip)
+        .toSet()
+        .toList(growable: false);
     setState(() {
+      _sessionStage = state.stage;
       _state = switch (state.stage) {
         ConnectionViewStage.idle => TunnelState.idle,
         ConnectionViewStage.connected => TunnelState.connected,
@@ -69,7 +78,11 @@ class _HomePageState extends State<HomePage> {
       _progress = state.progress;
       _selectedIp = state.selectedIp;
       _failure = state.failure;
-      if (nextRows.isNotEmpty) _rows = nextRows;
+      _testedCount = state.testedCount;
+      _totalCount = state.totalCount;
+      _cleanCount = state.cleanCount;
+      _rows = nextRows;
+      _probes.clear();
       for (final result in state.candidates) {
         _probes[result.ip] = result;
       }
@@ -163,6 +176,47 @@ class _HomePageState extends State<HomePage> {
     _ => AppColors.cyan,
   };
 
+  IpProbeResult? get _selectedProbe =>
+      _selectedIp == null ? null : _probes[_selectedIp];
+
+  String get _cleanIpValue =>
+      _isPreview ? _defaultRows.first : _selectedIp ?? '—';
+
+  String get _latencyValue {
+    if (_isPreview) return '24 ms';
+    final latency = _selectedProbe?.latencyMs;
+    return latency == null ? '—' : '$latency ms';
+  }
+
+  String get _latencyDetail => _isPreview ? 'Jitter 1.2ms' : '—';
+
+  String get _connectionSummary {
+    if (_state == TunnelState.failed) {
+      return _failure?.messageFor(s.locale.languageCode).title ??
+          'Connection failed';
+    }
+    if (_state == TunnelState.connected) {
+      if (_isPreview) return 'Connected to CF Edge • Frankfurt';
+      return _selectedIp == null
+          ? s.connected
+          : '${s.connected} • $_selectedIp';
+    }
+    return _isPreview ? 'Cloudflare Edge available' : s.standby;
+  }
+
+  Color _stageColor(ConnectionViewStage stage) {
+    if (_isPreview) return AppColors.green;
+    if (_sessionStage == ConnectionViewStage.connected) {
+      return AppColors.green;
+    }
+    if (_sessionStage == stage) return AppColors.cyan;
+    if (_sessionStage.index > stage.index &&
+        _sessionStage != ConnectionViewStage.failed) {
+      return AppColors.green;
+    }
+    return AppColors.muted;
+  }
+
   @override
   void dispose() {
     _runId++;
@@ -181,17 +235,18 @@ class _HomePageState extends State<HomePage> {
         Panel(
           child: Column(
             children: [
-              Wrap(
-                spacing: 6,
-                children: [
-                  for (final state in TunnelState.values)
-                    ChoiceChip(
-                      label: Text(state.name.toUpperCase()),
-                      selected: state == _state,
-                      onSelected: (_) => setState(() => _state = state),
-                    ),
-                ],
-              ),
+              if (_isPreview)
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    for (final state in TunnelState.values)
+                      ChoiceChip(
+                        label: Text(state.name.toUpperCase()),
+                        selected: state == _state,
+                        onSelected: (_) => setState(() => _state = state),
+                      ),
+                  ],
+                ),
               const SizedBox(height: 20),
               InkWell(
                 key: const ValueKey<String>('connect-orb'),
@@ -248,51 +303,57 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Icon(Icons.circle, size: 9, color: _color),
                   const SizedBox(width: 7),
-                  Flexible(child: Text(
-                    _state == TunnelState.failed
-                        ? (_failure?.messageFor(s.locale.languageCode).title ?? 'Connection failed')
-                        : _state == TunnelState.connected
-                        ? 'Connected to CF Edge • Frankfurt'
-                        : 'Cloudflare Edge available',
-                    overflow: TextOverflow.ellipsis,
-                  )),
+                  Flexible(
+                    child: Text(
+                      _connectionSummary,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
               LayoutBuilder(
                 builder: (context, constraints) => GridView(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: constraints.maxWidth >= 700 ? 4 : 2,
-                  mainAxisExtent: 132,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: constraints.maxWidth >= 700 ? 4 : 2,
+                    mainAxisExtent: 132,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  children: [
+                    StatCard(
+                      label: s.cleanIp,
+                      value: _cleanIpValue,
+                      detail: _isPreview ? 'v4' : '—',
+                      color: _isPreview || _selectedIp != null
+                          ? AppColors.cyan
+                          : AppColors.muted,
+                    ),
+                    StatCard(
+                      label: s.latency,
+                      value: _latencyValue,
+                      detail: _latencyDetail,
+                      color: _isPreview || _selectedProbe != null
+                          ? AppColors.green
+                          : AppColors.muted,
+                    ),
+                    StatCard(
+                      label: s.transfer,
+                      value: _isPreview ? '48.2 MB/s' : '—',
+                      detail: _isPreview ? '↓ 48.2  ↑ 12.4' : '—',
+                      color: _isPreview ? AppColors.cyan : AppColors.muted,
+                    ),
+                    StatCard(
+                      label: s.totalPayload,
+                      value: _isPreview ? '1.84 GB' : '—',
+                      detail: _isPreview ? '/ 420 MB' : '—',
+                      color: _isPreview ? AppColors.cyan : AppColors.muted,
+                    ),
+                  ],
                 ),
-                children: [
-                  StatCard(
-                    label: s.cleanIp,
-                    value: '104.16.132.48',
-                    detail: 'v4',
-                  ),
-                  StatCard(
-                    label: s.latency,
-                    value: '24 ms',
-                    detail: 'Jitter 1.2ms',
-                    color: AppColors.green,
-                  ),
-                  StatCard(
-                    label: s.transfer,
-                    value: '48.2 MB/s',
-                    detail: '↓ 48.2  ↑ 12.4',
-                  ),
-                  StatCard(
-                    label: s.totalPayload,
-                    value: '1.84 GB',
-                    detail: '/ 420 MB',
-                  ),
-                ],
-              )),
+              ),
               const SizedBox(height: 18),
               Wrap(
                 spacing: 10,
@@ -302,16 +363,18 @@ class _HomePageState extends State<HomePage> {
                     icon: const Icon(Icons.refresh_rounded),
                     label: Text(s.forceRescan),
                   ),
-                  OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.swap_horiz_rounded),
-                    label: const Text('Switch Relay'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _fail,
-                    icon: const Icon(Icons.bug_report_outlined),
-                    label: const Text('Force Fail'),
-                  ),
+                  if (_isPreview) ...[
+                    OutlinedButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.swap_horiz_rounded),
+                      label: const Text('Switch Relay'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _fail,
+                      icon: const Icon(Icons.bug_report_outlined),
+                      label: const Text('Force Fail'),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -327,7 +390,9 @@ class _HomePageState extends State<HomePage> {
                 subtitle: s.scannerSubtitle,
                 action: OutlinedButton.icon(
                   key: const ValueKey<String>('cancel-scan'),
-                  onPressed: _state == TunnelState.scanning || _state == TunnelState.connecting
+                  onPressed:
+                      _state == TunnelState.scanning ||
+                          _state == TunnelState.connecting
                       ? _cancelConnection
                       : null,
                   icon: const Icon(Icons.cancel_outlined),
@@ -336,20 +401,27 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 18),
               LinearProgressIndicator(
-                value: _progress / 100,
+                value: (_progress.clamp(0, 100) / 100).toDouble(),
                 minHeight: 8,
                 borderRadius: BorderRadius.circular(8),
               ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Mono('$_progress%', key: const ValueKey<String>('scan-progress')),
+                  Mono(
+                    '$_progress%',
+                    key: const ValueKey<String>('scan-progress'),
+                  ),
                   const Spacer(),
-                  Flexible(child: Text(
-                    '1,720 / 2,500 ${s.tested}  •  42 ${s.cleanFound}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                    overflow: TextOverflow.ellipsis,
-                  )),
+                  Flexible(
+                    child: Text(
+                      _isPreview
+                          ? '1,720 / 2,500 ${s.tested}  •  42 ${s.cleanFound}'
+                          : '$_testedCount / $_totalCount ${s.tested}  •  $_cleanCount ${s.cleanFound}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -358,23 +430,45 @@ class _HomePageState extends State<HomePage> {
                 runSpacing: 8,
                 children: [
                   for (final item in [
-                    s.prepare,
-                    s.scanIps,
-                    s.selectBest,
-                    s.buildConfig,
-                    s.startCore,
-                    s.verify,
+                    (stage: ConnectionViewStage.preparing, label: s.prepare),
+                    (stage: ConnectionViewStage.scanning, label: s.scanIps),
+                    (
+                      stage: ConnectionViewStage.selectingBest,
+                      label: s.selectBest,
+                    ),
+                    (
+                      stage: ConnectionViewStage.buildingConfig,
+                      label: s.buildConfig,
+                    ),
+                    (
+                      stage: ConnectionViewStage.startingCore,
+                      label: s.startCore,
+                    ),
+                    (
+                      stage: ConnectionViewStage.verifyingConnection,
+                      label: s.verify,
+                    ),
                   ])
-                    StatusChip(item, color: AppColors.green),
+                    StatusChip(item.label, color: _stageColor(item.stage)),
                 ],
               ),
               const SizedBox(height: 16),
               for (var i = 0; i < _rows.length; i++)
                 _IpRow(
                   ip: _rows[i],
-                  latency: '${_probes[_rows[i]]?.latencyMs ?? 24 + i * 7}ms',
-                  clean: _probes[_rows[i]]?.isClean ?? i < 3,
-                  best: _selectedIp == null ? i == 0 : _selectedIp == _rows[i],
+                  latency: _isPreview
+                      ? '${_probes[_rows[i]]?.latencyMs ?? 24 + i * 7}ms'
+                      : _probes[_rows[i]] == null
+                      ? '—'
+                      : '${_probes[_rows[i]]!.latencyMs}ms',
+                  clean: _isPreview
+                      ? _probes[_rows[i]]?.isClean ?? i < 3
+                      : _probes[_rows[i]]?.isClean ?? false,
+                  best: _isPreview
+                      ? _selectedIp == null
+                            ? i == 0
+                            : _selectedIp == _rows[i]
+                      : _selectedIp == _rows[i],
                 ),
             ],
           ),

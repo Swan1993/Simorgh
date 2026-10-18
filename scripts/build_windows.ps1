@@ -19,6 +19,7 @@ try {
   $release = Join-Path $root 'build\windows\x64\runner\Release'
   $hashFile = Join-Path $release 'SHA256SUMS.txt'
   Get-ChildItem -File $release |
+    Where-Object { $_.Name -ne 'SHA256SUMS.txt' } |
     Get-FileHash -Algorithm SHA256 |
     ForEach-Object { '{0}  {1}' -f $_.Hash.ToLowerInvariant(), $_.Path.Substring($release.Length + 1) } |
     Set-Content -Path $hashFile -Encoding utf8

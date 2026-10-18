@@ -25,6 +25,9 @@ class ConnectionViewState {
   const ConnectionViewState({
     required this.stage,
     this.progress = 0,
+    this.testedCount = 0,
+    this.totalCount = 0,
+    this.cleanCount = 0,
     this.candidates = const <IpProbeResult>[],
     this.selectedIp,
     this.failure,
@@ -33,11 +36,17 @@ class ConnectionViewState {
 
   final ConnectionViewStage stage;
   final int progress;
+  final int testedCount;
+  final int totalCount;
+  final int cleanCount;
   final List<IpProbeResult> candidates;
   final String? selectedIp;
   final FailureCode? failure;
   final String? message;
-  bool get busy => stage != ConnectionViewStage.idle && stage != ConnectionViewStage.connected && stage != ConnectionViewStage.failed;
+  bool get busy =>
+      stage != ConnectionViewStage.idle &&
+      stage != ConnectionViewStage.connected &&
+      stage != ConnectionViewStage.failed;
 }
 
 abstract interface class ConnectionSession {
@@ -66,8 +75,11 @@ class ProductionConnectionSession implements ConnectionSession {
   final IpScannerService _scanner;
   final CoreService _core;
   final LogService _logger;
-  final StreamController<ConnectionViewState> _states = StreamController<ConnectionViewState>.broadcast();
-  ConnectionViewState _current = const ConnectionViewState(stage: ConnectionViewStage.idle);
+  final StreamController<ConnectionViewState> _states =
+      StreamController<ConnectionViewState>.broadcast();
+  ConnectionViewState _current = const ConnectionViewState(
+    stage: ConnectionViewStage.idle,
+  );
   ConnectionOrchestrator? _orchestrator;
   HttpHealthTransport? _healthTransport;
   Future<void>? _connectOperation;
@@ -94,12 +106,25 @@ class ProductionConnectionSession implements ConnectionSession {
     if (_orchestrator != null) await disconnect();
     final relay = await _relays.active();
     if (relay == null) {
-      _emit(const ConnectionViewState(stage: ConnectionViewStage.failed, failure: FailureCode.coreConfigInvalid, message: 'No active relay is configured.'));
+      _emit(
+        const ConnectionViewState(
+          stage: ConnectionViewStage.failed,
+          failure: FailureCode.coreConfigInvalid,
+          message: 'No active relay is configured.',
+        ),
+      );
       return;
     }
     final binary = await _binaries.resolve();
     if (binary == null) {
-      _emit(const ConnectionViewState(stage: ConnectionViewStage.failed, failure: FailureCode.coreMissing, message: 'sing-box.exe was not found in the application core directory.'));
+      _emit(
+        const ConnectionViewState(
+          stage: ConnectionViewStage.failed,
+          failure: FailureCode.coreMissing,
+          message:
+              'sing-box.exe was not found in the application core directory.',
+        ),
+      );
       return;
     }
 
@@ -107,18 +132,55 @@ class ProductionConnectionSession implements ConnectionSession {
     final healthEndpoint = Uri.parse('https://$serverName/health');
     final healthTransport = HttpHealthTransport();
     _healthTransport = healthTransport;
-    final health = HealthService(transport: healthTransport, endpoint: healthEndpoint, onResult: (result) {
-      _logger.info('health', 'Relay health check completed.', metadata: {'healthy': result.healthy, 'latencyMs': result.latency.inMilliseconds});
-    }, onUnhealthy: () {
-      _logger.warning('health', 'Relay health check failed.');
-    });
-    final orchestrator = ConnectionOrchestrator(logger: _logger, scanner: _scanner, core: _core, health: health);
+    final health = HealthService(
+      transport: healthTransport,
+      endpoint: healthEndpoint,
+      onResult: (result) {
+        _logger.info(
+          'health',
+          'Relay health check completed.',
+          metadata: {
+            'healthy': result.healthy,
+            'latencyMs': result.latency.inMilliseconds,
+          },
+        );
+      },
+      onUnhealthy: () {
+        _logger.warning('health', 'Relay health check failed.');
+      },
+    );
+    final orchestrator = ConnectionOrchestrator(
+      logger: _logger,
+      scanner: _scanner,
+      core: _core,
+      health: health,
+    );
     _orchestrator = orchestrator;
     final subscription = orchestrator.events.listen(_onOrchestratorEvent);
     try {
-      final failure = await orchestrator.connect(scanOptions: ScanOptions(serverName: serverName, ports: <int>[relay.port, 8443, 2053], sampleSize: 300, concurrency: 40), coreBinaryPath: binary.path, expectedCoreSha256: binary.sha256, relayServerName: serverName, relayUuid: relay.uuid, relayPort: relay.port, relayPath: relay.path, useSystemProxy: true, verifyLocalPort: true);
+      final failure = await orchestrator.connect(
+        scanOptions: ScanOptions(
+          serverName: serverName,
+          ports: <int>[relay.port, 8443, 2053],
+          sampleSize: 300,
+          concurrency: 40,
+        ),
+        coreBinaryPath: binary.path,
+        expectedCoreSha256: binary.sha256,
+        relayServerName: serverName,
+        relayUuid: relay.uuid,
+        relayPort: relay.port,
+        relayPath: relay.path,
+        useSystemProxy: true,
+        verifyLocalPort: true,
+      );
       if (failure != null && _current.stage != ConnectionViewStage.failed) {
-        _emit(ConnectionViewState(stage: ConnectionViewStage.failed, failure: failure));
+        _emit(
+          ConnectionViewState(
+            stage: ConnectionViewStage.failed,
+            failure: failure,
+          ),
+        );
       }
     } finally {
       await subscription.cancel();
@@ -130,11 +192,26 @@ class ProductionConnectionSession implements ConnectionSession {
     final candidates = <IpProbeResult>[..._current.candidates];
     final result = event.scanEvent?.result;
     if (result != null) {
-      candidates.removeWhere((item) => item.ip == result.ip && item.port == result.port);
+      candidates.removeWhere(
+        (item) => item.ip == result.ip && item.port == result.port,
+      );
       candidates.add(result);
       candidates.sort((a, b) => a.latencyMs.compareTo(b.latencyMs));
     }
-    _emit(ConnectionViewState(stage: _stage(event.stage), progress: event.progress, candidates: candidates, selectedIp: event.scanEvent?.best?.ip ?? _current.selectedIp, failure: event.failure, message: event.failure?.wireCode));
+    final scanEvent = event.scanEvent;
+    _emit(
+      ConnectionViewState(
+        stage: _stage(event.stage),
+        progress: event.progress,
+        testedCount: scanEvent?.tested ?? _current.testedCount,
+        totalCount: scanEvent?.total ?? _current.totalCount,
+        cleanCount: candidates.where((item) => item.isClean).length,
+        candidates: candidates,
+        selectedIp: scanEvent?.best?.ip ?? _current.selectedIp,
+        failure: event.failure,
+        message: event.failure?.wireCode,
+      ),
+    );
   }
 
   ConnectionViewStage _stage(OrchestratorStage stage) => switch (stage) {
@@ -144,7 +221,8 @@ class ProductionConnectionSession implements ConnectionSession {
     OrchestratorStage.selectingBest => ConnectionViewStage.selectingBest,
     OrchestratorStage.buildingConfig => ConnectionViewStage.buildingConfig,
     OrchestratorStage.startingCore => ConnectionViewStage.startingCore,
-    OrchestratorStage.verifyingConnection => ConnectionViewStage.verifyingConnection,
+    OrchestratorStage.verifyingConnection =>
+      ConnectionViewStage.verifyingConnection,
     OrchestratorStage.connected => ConnectionViewStage.connected,
     OrchestratorStage.failed => ConnectionViewStage.failed,
   };
@@ -178,7 +256,9 @@ class ProductionConnectionSession implements ConnectionSession {
   }
 
   String _hostname(String value) {
-    final parsed = Uri.tryParse(value.contains('://') ? value : 'https://$value');
+    final parsed = Uri.tryParse(
+      value.contains('://') ? value : 'https://$value',
+    );
     return parsed?.host.isNotEmpty == true ? parsed!.host : value;
   }
 }
