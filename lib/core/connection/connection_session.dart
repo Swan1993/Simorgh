@@ -147,6 +147,15 @@ class ProductionConnectionSession implements ConnectionSession {
       },
       onUnhealthy: () {
         _logger.warning('health', 'Relay health check failed.');
+        if (!_disposed && _current.stage == ConnectionViewStage.connected) {
+          _emit(
+            const ConnectionViewState(
+              stage: ConnectionViewStage.failed,
+              failure: FailureCode.verifyTimeout,
+              message: 'Relay health check failed after connection.',
+            ),
+          );
+        }
       },
     );
     final orchestrator = ConnectionOrchestrator(
