@@ -1,0 +1,101 @@
+import 'package:flutter/material.dart';
+
+class AppStrings {
+  AppStrings(this.locale);
+  final Locale locale;
+  bool get isFa => locale.languageCode == 'fa';
+  bool get isHi => locale.languageCode == 'hi';
+  TextDirection get direction => isFa ? TextDirection.rtl : TextDirection.ltr;
+
+  String _t(String fa, String en, String hi) => isFa
+      ? fa
+      : isHi
+      ? hi
+      : en;
+  String get appName => 'Simorgh';
+  String get edgeSynced =>
+      _t('اتصال لبه فعال', 'CF EDGE SYNCED', 'सीएफ एज सिंक');
+  String get debugOff => _t('اشکال‌زدایی: خاموش', 'DEBUG: OFF', 'डीबग: बंद');
+  String get activeTunnel => _t('تونل فعال', 'ACTIVE TUNNEL', 'सक्रिय टनल');
+  String get online => _t('آنلاین', 'Online', 'ऑनलाइन');
+  String get ready => _t('آماده', 'READY', 'तैयार');
+  String get home => _t('خانه', 'Home', 'होम');
+  String get relays => _t('رله‌ها', 'Relays', 'रिले');
+  String get console => _t('کنسول', 'Console', 'कंसोल');
+  String get aiSettings =>
+      _t('تنظیمات هوش مصنوعی', 'AI Settings', 'एआई सेटिंग्स');
+  String get settings => _t('تنظیمات', 'Settings', 'सेटिंग्स');
+  String get connect => _t('اتصال', 'CONNECT', 'कनेक्ट');
+  String get disconnect => _t('قطع اتصال', 'DISCONNECT', 'डिस्कनेक्ट');
+  String get scanning => _t('در حال اسکن', 'SCANNING', 'स्कैन हो रहा है');
+  String get connected => _t('متصل', 'CONNECTED', 'कनेक्टेड');
+  String get failed => _t('ناموفق', 'FAILED', 'विफल');
+  String get standby => _t('آماده اتصال', 'STANDBY', 'स्टैंडबाय');
+  String get scannerTitle => _t(
+    'اسکن زنده IPهای سالم Cloudflare',
+    'Cloudflare Clean IP Live Scanner',
+    'क्लाउडफ्लेयर क्लीन IP लाइव स्कैनर',
+  );
+  String get scannerSubtitle => _t(
+    'اسکن زیرشبکه‌ها برای یافتن مسیر پایدار',
+    'Scanning subnets for TLS handshake and bypass candidates',
+    'TLS हैंडशेक और बायपास उम्मीदवारों के लिए सबनेट स्कैन',
+  );
+  String get cancel => _t('لغو', 'Cancel', 'रद्द करें');
+  String get forceRescan =>
+      _t('اسکن دوباره', 'Force Re-scan', 'फोर्स री-स्कैन');
+  String get selectBest =>
+      _t('انتخاب بهترین', 'Select best', 'सर्वश्रेष्ठ चुनें');
+  String get cleanIp => _t('IP سالم', 'Clean Anycast IP', 'क्लीन एनीकास्ट IP');
+  String get latency => _t('تأخیر', 'Latency', 'लेटेंसी');
+  String get transfer => _t('سرعت انتقال', 'Transfer Rate', 'ट्रांसफर रेट');
+  String get totalPayload => _t('ترافیک نشست', 'Total Payload', 'कुल पेलोड');
+  String get prepare => _t('آماده‌سازی', 'Prepare', 'तैयारी');
+  String get scanIps => _t('اسکن IPها', 'Scan IPs', 'IP स्कैन');
+  String get buildConfig =>
+      _t('ساخت تنظیمات', 'Build config', 'कॉन्फ़िग बनाएँ');
+  String get startCore => _t('اجرای هسته', 'Start core', 'कोर शुरू');
+  String get verify =>
+      _t('تأیید اتصال', 'Verify connection', 'कनेक्शन सत्यापित');
+  String get tested => _t('بررسی‌شده', 'tested', 'जाँचा गया');
+  String get cleanFound => _t('سالم پیدا شد', 'clean found', 'क्लीन मिले');
+  String get relaysSubtitle => _t(
+    'مدیریت رله‌ها و Workerهای Cloudflare',
+    'Cloudflare relays and worker nodes',
+    'क्लाउडफ्लेयर रिले और वर्कर नोड',
+  );
+  String get addRelay => _t('افزودن رله', 'Add relay', 'रिले जोड़ें');
+  String get consoleSubtitle => _t(
+    'گزارش‌های قابل انتخاب و تشخیص خطای اتصال',
+    'Selectable logs and connection diagnostics',
+    'चयन योग्य लॉग और कनेक्शन डायग्नोस्टिक्स',
+  );
+  String get copyAll => _t('کپی همه', 'Copy all', 'सब कॉपी करें');
+  String get copyIde => _t('بسته IDE', 'IDE bundle', 'IDE बंडल');
+  String get analyze =>
+      _t('تحلیل با هوش مصنوعی', 'Analyze with AI', 'एआई से विश्लेषण');
+  String get aiDiagnosis =>
+      _t('تشخیص هوشمند', 'AI Diagnosis', 'एआई डायग्नोसिस');
+  String get aiSubtitle => _t(
+    'ارائه‌دهنده و حریم خصوصی تحلیل خطا',
+    'Provider and privacy controls for diagnostics',
+    'डायग्नोस्टिक्स प्रदाता और गोपनीयता',
+  );
+  String get provider => _t('ارائه‌دهنده', 'Provider', 'प्रदाता');
+  String get baseUrl => _t('آدرس پایه', 'Base URL', 'बेस URL');
+  String get apiKey => _t('کلید API', 'API Key', 'API कुंजी');
+  String get model => _t('مدل', 'Model', 'मॉडल');
+  String get testConnection =>
+      _t('تست اتصال', 'Test connection', 'कनेक्शन जाँचें');
+  String get privacy => _t(
+    'داده‌ها پیش از ارسال پاک‌سازی می‌شوند.',
+    'Sensitive data is redacted before sending.',
+    'भेजने से पहले संवेदनशील डेटा हटाया जाता है।',
+  );
+  String get routing =>
+      _t('مسیر اتصال', 'Connection & Routing', 'कनेक्शन और रूटिंग');
+  String get scanner =>
+      _t('پارامترهای اسکن', 'Scanner Parameters', 'स्कैनर पैरामीटर');
+  String get language => _t('زبان', 'Language', 'भाषा');
+  String get save => _t('ذخیره تنظیمات', 'Save settings', 'सेटिंग्स सहेजें');
+}
