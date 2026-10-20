@@ -23,7 +23,7 @@ class SimorghApp extends StatefulWidget {
 }
 
 class _SimorghAppState extends State<SimorghApp> {
-  Locale _locale = const Locale('fa');
+  Locale _locale = const Locale('en');
   void _setLocale(Locale locale) => setState(() => _locale = locale);
 
   @override
