@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'app/composition.dart';
+import 'app/splash_screen.dart';
 import 'core/connection/connection_session.dart';
 import 'core/relays/cloudflare_deploy_service.dart';
 import 'core/theme.dart';
@@ -14,8 +15,9 @@ import 'pages/relays_page.dart';
 import 'pages/settings_page.dart';
 
 class SimorghApp extends StatefulWidget {
-  const SimorghApp({this.services, super.key});
+  const SimorghApp({this.services, this.servicesFuture, super.key});
   final AppServices? services;
+  final Future<AppServices>? servicesFuture;
   @override
   State<SimorghApp> createState() => _SimorghAppState();
 }
@@ -27,19 +29,48 @@ class _SimorghAppState extends State<SimorghApp> {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings(_locale);
+    final home = _buildHome(strings);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: strings.appName,
       theme: AppTheme.dark,
       locale: _locale,
-      home: AppShell(
-        strings: strings,
-        onLocaleChanged: _setLocale,
-        services: widget.services,
-        cloudflareDeployService: widget.services?.cloudflareDeploy,
-      ),
+      home: home,
     );
   }
+
+  Widget _buildHome(AppStrings strings) {
+    final services = widget.services;
+    if (services != null) {
+      return _appShell(strings, services);
+    }
+
+    final servicesFuture = widget.servicesFuture;
+    if (servicesFuture == null) {
+      return _appShell(strings, null);
+    }
+
+    return FutureBuilder<AppServices>(
+      future: servicesFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return SplashScreen(strings: strings, hasError: true);
+        }
+        final resolvedServices = snapshot.data;
+        if (resolvedServices == null) {
+          return SplashScreen(strings: strings);
+        }
+        return _appShell(strings, resolvedServices);
+      },
+    );
+  }
+
+  Widget _appShell(AppStrings strings, AppServices? services) => AppShell(
+    strings: strings,
+    onLocaleChanged: _setLocale,
+    services: services,
+    cloudflareDeployService: services?.cloudflareDeploy,
+  );
 }
 
 class AppShell extends StatefulWidget {

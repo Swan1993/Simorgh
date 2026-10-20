@@ -13,6 +13,21 @@ class AppStrings {
       ? hi
       : en;
   String get appName => 'Simorgh';
+  String get startupSubtitle => _t(
+    'اتصال امن و پایدار به شبکه',
+    'Secure, resilient network access',
+    'सुरक्षित और भरोसेमंद नेटवर्क एक्सेस',
+  );
+  String get startupLoading => _t(
+    'در حال آماده‌سازی سرویس‌ها...',
+    'Preparing services...',
+    'सेवाएँ तैयार हो रही हैं...',
+  );
+  String get startupFailed => _t(
+    'راه‌اندازی سرویس‌ها ناموفق بود. برنامه را دوباره اجرا کنید.',
+    'Services could not start. Please restart the app.',
+    'सेवाएँ शुरू नहीं हो सकीं। ऐप को फिर शुरू करें।',
+  );
   String get edgeSynced =>
       _t('اتصال لبه فعال', 'CF EDGE SYNCED', 'सीएफ एज सिंक');
   String get debugOff => _t('اشکال‌زدایی: خاموش', 'DEBUG: OFF', 'डीबग: बंद');

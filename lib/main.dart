@@ -8,13 +8,14 @@ import 'core/desktop/desktop_shell_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final services = await AppServices.create();
+  final servicesFuture = AppServices.create().then((services) async {
+    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+      await DesktopShellService.instance.init(
+        onExitRequested: services.dispose,
+      );
+    }
+    return services;
+  });
 
-  if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-    await DesktopShellService.instance.init(
-      onExitRequested: services.dispose,
-    );
-  }
-
-  runApp(SimorghApp(services: services));
+  runApp(SimorghApp(servicesFuture: servicesFuture));
 }
