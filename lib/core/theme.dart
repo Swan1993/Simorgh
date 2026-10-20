@@ -17,24 +17,72 @@ class AppColors {
 
 class AppTheme {
   static ThemeData get dark => ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: AppColors.background,
-        colorScheme: const ColorScheme.dark(primary: AppColors.cyan, secondary: AppColors.green, surface: AppColors.surface),
-        dividerColor: AppColors.outline,
-        cardColor: AppColors.surface,
-        navigationRailTheme: const NavigationRailThemeData(backgroundColor: AppColors.background, indicatorColor: Color(0x3322d3ee), selectedIconTheme: IconThemeData(color: AppColors.cyan), selectedLabelTextStyle: TextStyle(color: AppColors.cyan, fontSize: 11), unselectedIconTheme: IconThemeData(color: AppColors.muted), unselectedLabelTextStyle: TextStyle(color: AppColors.muted, fontSize: 11)),
-        inputDecorationTheme: InputDecorationTheme(filled: true, fillColor: AppColors.surfaceLow, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.outline)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.outline)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.cyan))),
-        textTheme: const TextTheme(bodyMedium: TextStyle(color: AppColors.text), bodySmall: TextStyle(color: AppColors.muted), titleLarge: TextStyle(color: AppColors.text, fontWeight: FontWeight.w700), titleMedium: TextStyle(color: AppColors.text, fontWeight: FontWeight.w600), titleSmall: TextStyle(color: AppColors.text, fontWeight: FontWeight.w600), labelSmall: TextStyle(color: AppColors.muted, letterSpacing: .5)),
-      );
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: AppColors.background,
+    colorScheme: const ColorScheme.dark(
+      primary: AppColors.cyan,
+      secondary: AppColors.green,
+      surface: AppColors.surface,
+    ),
+    dividerColor: AppColors.outline,
+    cardColor: AppColors.surface,
+    navigationRailTheme: const NavigationRailThemeData(
+      backgroundColor: AppColors.background,
+      indicatorColor: Color(0x3322d3ee),
+      selectedIconTheme: IconThemeData(color: AppColors.cyan),
+      selectedLabelTextStyle: TextStyle(color: AppColors.cyan, fontSize: 11),
+      unselectedIconTheme: IconThemeData(color: AppColors.muted),
+      unselectedLabelTextStyle: TextStyle(color: AppColors.muted, fontSize: 11),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.surfaceLow,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.outline),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.outline),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.cyan),
+      ),
+    ),
+    textTheme: const TextTheme(
+      bodyMedium: TextStyle(color: AppColors.text),
+      bodySmall: TextStyle(color: AppColors.muted),
+      titleLarge: TextStyle(color: AppColors.text, fontWeight: FontWeight.w700),
+      titleMedium: TextStyle(
+        color: AppColors.text,
+        fontWeight: FontWeight.w600,
+      ),
+      titleSmall: TextStyle(color: AppColors.text, fontWeight: FontWeight.w600),
+      labelSmall: TextStyle(color: AppColors.muted, letterSpacing: .5),
+    ),
+  );
 }
 
 class Panel extends StatelessWidget {
-  const Panel({required this.child, this.padding = const EdgeInsets.all(18), super.key});
+  const Panel({
+    required this.child,
+    this.padding = const EdgeInsets.all(18),
+    super.key,
+  });
   final Widget child;
   final EdgeInsets padding;
 
   @override
-  Widget build(BuildContext context) => Container(padding: padding, decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.outline.withValues(alpha: .7))), child: child);
+  Widget build(BuildContext context) => Container(
+    padding: padding,
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: AppColors.outline.withValues(alpha: .7)),
+    ),
+    child: child,
+  );
 }
 
 class Mono extends StatelessWidget {
@@ -44,5 +92,12 @@ class Mono extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) => Text(text, style: TextStyle(fontFamily: 'monospace', color: color ?? AppColors.text, fontSize: size));
+  Widget build(BuildContext context) => Text(
+    text,
+    style: TextStyle(
+      fontFamily: 'monospace',
+      color: color ?? AppColors.text,
+      fontSize: size,
+    ),
+  );
 }

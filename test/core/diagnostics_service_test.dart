@@ -24,7 +24,12 @@ void main() {
   test('AI diagnosis is optional and failures are safe', () async {
     final logger = LogService();
     final service = DiagnosticsService(logger: logger, aiClient: _Ai());
-    final bundle = DebugBundle(version: '0.1.0', stage: 'verify', failure: FailureCode.verifyTimeout, logs: const []);
+    final bundle = const DebugBundle(
+      version: '0.1.0',
+      stage: 'verify',
+      failure: FailureCode.verifyTimeout,
+      logs: [],
+    );
     final report = await service.analyze(bundle, useAi: true);
     expect(report.ai?.confidence, 0.94);
     expect(bundle.toMarkdown(), contains('E_VERIFY_TIMEOUT'));

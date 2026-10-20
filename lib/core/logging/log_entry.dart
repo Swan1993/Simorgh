@@ -1,13 +1,7 @@
 import 'dart:convert';
 
 /// Severity used by the structured application log.
-enum LogLevel {
-  debug,
-  info,
-  warning,
-  error,
-  ai,
-}
+enum LogLevel { debug, info, warning, error, ai }
 
 extension LogLevelLabel on LogLevel {
   String get label {

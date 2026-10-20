@@ -101,9 +101,7 @@ class Redactor {
       };
     }
     if (value is Iterable) {
-      return <Object?>[
-        for (final item in value) redactValue(item),
-      ];
+      return <Object?>[for (final item in value) redactValue(item)];
     }
     return value;
   }
