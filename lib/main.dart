@@ -6,7 +6,7 @@ import 'app.dart';
 import 'app/composition.dart';
 import 'core/desktop/desktop_shell_service.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final servicesFuture = AppServices.create().then((services) async {
     if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
