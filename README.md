@@ -1,5 +1,7 @@
 # Simorgh
 
+[![Dark Theme](https://img.shields.io/badge/Theme-Dark-2d3748?style=flat)](https://github.com) [![Languages](https://img.shields.io/badge/Languages-English%20%7C%20Persian%20%7C%20Hindi-blue?style=flat)](https://github.com) [![Like](https://img.shields.io/badge/Like-Heart-ff6b6b?style=flat)](https://github.com)
+
 Simorgh is a Windows-focused Flutter desktop client for a privacy-first Cloudflare relay workflow. The production composition root connects Home to secure storage, relay persistence, the real scanner, sing-box lifecycle, health checks and Windows proxy cleanup. A no-services `SimorghApp()` remains available for widget previews.
 
 ## Features
@@ -9,7 +11,18 @@ Simorgh is a Windows-focused Flutter desktop client for a privacy-first Cloudfla
 - Live IP scan events, progress, telemetry and stage chips when an active relay and verified core are configured, plus a real TCP/TLS scanner service.
 - Relay overview, selectable diagnostic console, AI settings and routing settings.
 - Secure secrets, rotating JSONL logs, sing-box config/process lifecycle, Cloudflare Worker deployment, health checks, fallback config updates and auto-reconnect policy.
-- Persian (default), English and Hindi localization. Persian uses RTL; Hindi and English use LTR.
+- English, Persian (default), and Hindi localization. Persian uses RTL; Hindi and English use LTR.
+
+## Screenshots
+
+<p align="center">
+  <img src="assets/screenshots/1.png" width="49%" alt="Simorgh home screen">
+  <img src="assets/screenshots/2.png" width="49%" alt="Simorgh startup screen">
+  <img src="assets/screenshots/3.png" width="49%" alt="Relay management screen">
+  <img src="assets/screenshots/4.png" width="49%" alt="Diagnostics console">
+  <img src="assets/screenshots/5.png" width="49%" alt="AI diagnostics settings">
+  <img src="assets/screenshots/6.png" width="49%" alt="Connection and routing settings">
+</p>
 
 A verified `sing-box.exe`, relay configuration, user credentials and explicit Windows
 permissions are required before using the real path. TUN/Wintun and a signed core
@@ -58,81 +71,70 @@ data/core/sing-box.exe
 data/core/sing-box.sha256
 ```
 
-## ساخت Worker در Cloudflare؛ راهنمای کامل برای کاربر
+## Creating a Cloudflare Worker: Complete User Guide
 
-### روش پیشنهادی: ساخت خودکار از داخل Simorgh
+### Recommended Method: Automatic Deployment from Simorgh
 
-اگر فقط می‌خواهید برنامه را راه‌اندازی کنید، نیازی به کپی‌کردن کد Worker ندارید:
+If you only want to get the application running, you do not need to copy the Worker code:
 
-1. در Cloudflare یک API Token با دسترسی **Workers Scripts: Edit** برای Account موردنظر
-   بسازید.
-2. مطمئن شوید برای Account شما یک `workers.dev` subdomain فعال است.
-3. در Simorgh به **Relays → Auto-deploy** بروید.
-4. نام Relay، نام Worker، Account ID و API Token را وارد کنید.
-5. روی **Deploy** بزنید.
+1. In Cloudflare, create an API Token with **Workers Scripts: Edit** permission for the desired account.
+2. Ensure your account has an active `workers.dev` subdomain.
+3. In Simorgh, go to **Relays → Auto-deploy**.
+4. Enter the Relay name, Worker name, Account ID, and API Token.
+5. Click **Deploy**.
 
-Simorgh توکن را بررسی می‌کند، subdomain واقعی Account را می‌خواند، کد Worker را
-آپلود می‌کند، UUID و مسیر WebSocket تصادفی می‌سازد، Relay را ذخیره می‌کند و اگر اولین
-Relay باشد آن را فعال می‌کند. در این روش کد زیر را دستی در Cloudflare paste نکنید.
+Simorgh verifies the token, reads the actual subdomain of your account, uploads the bundled VLESS-over-WebSocket Worker, generates random UUID and WebSocket path, saves the relay with the full Worker hostname, and marks it as active if it's the first relay. With this method, do not manually paste the code below in Cloudflare.
 
-### روش دستی: کپی‌کردن کد Worker
+### Manual Method: Copying Worker Code
 
-از این روش وقتی استفاده کنید که می‌خواهید Worker را خودتان در Cloudflare بسازید یا
-کد آن را بررسی کنید. این راهنما برای Cloudflare Dashboard نوشته شده است و ممکن است
-نام بعضی دکمه‌ها در نسخه‌های مختلف کمی فرق کند.
+Use this method when you want to create the Worker yourself in Cloudflare or review its code. This guide is written for the Cloudflare Dashboard, and some button names may vary slightly across different versions.
 
-#### مرحله ۱: ورود به Cloudflare
+#### Step 1: Log in to Cloudflare
 
-1. وارد [Cloudflare Dashboard](https://dash.cloudflare.com/) شوید.
-2. Account موردنظر را انتخاب کنید.
-3. از منوی **Workers & Pages** وارد بخش Workers شوید.
-4. اگر هنوز subdomain ندارید، از بخش **Workers & Pages** گزینه **Change** کنار
-   **Your subdomain** را انتخاب کنید و یک subdomain برای Account بسازید.
+1. Go to the [Cloudflare Dashboard](https://dash.cloudflare.com/).
+2. Select the desired account.
+3. From the **Workers & Pages** menu, go to the Workers section.
+4. If you don't have a subdomain yet, in the **Workers & Pages** section, select **Change** next to **Your subdomain** and create a subdomain for your account.
 
-#### مرحله ۲: ساخت Worker
+#### Step 2: Create Worker
 
-1. روی **Create application** یا **Create Worker** بزنید.
-2. نام Worker را وارد کنید؛ برای نمونه:
+1. Click **Create application** or **Create Worker**.
+2. Enter the Worker name; for example:
 
    ```text
    simorgh-relay
    ```
 
-   نام باید فقط شامل حروف انگلیسی، عدد و `-` باشد، حداکثر ۶۳ کاراکتر داشته باشد و
-   با `-` شروع یا تمام نشود.
-3. روی **Deploy** بزنید تا Worker اولیه ساخته شود.
-4. Worker ساخته‌شده را باز کنید و وارد **Edit code** شوید.
+   The name must only contain English letters, numbers, and `-`, have a maximum of 63 characters, and must not start or end with a dash.
+3. Click **Deploy** to create the initial Worker.
+4. Open the created Worker and go to **Edit code**.
 
-#### مرحله ۳: ساخت مقادیر محرمانه
+#### Step 3: Create Secret Values
 
-Worker برای قبول‌کردن اتصال به دو مقدار نیاز دارد: یک UUID و یک مسیر WebSocket.
-این دو مقدار را خودتان بسازید و در اختیار دیگران قرار ندهید.
+The Worker requires two values to accept connections: a UUID and a WebSocket path. Create these values yourself and do not share them with others.
 
-در PowerShell می‌توانید یک UUID بسازید:
+In PowerShell, you can generate a UUID:
 
 ```powershell
 [guid]::NewGuid().Guid
 ```
 
-برای شروع، یک مسیر مانند نمونه زیر انتخاب کنید:
+To get started, select a path like the following example:
 
 ```text
 /simorgh-demo-7f3a
 ```
 
-مسیر باید با `/` شروع شود و در کد Worker و تنظیمات Relay در Simorgh دقیقاً یکسان
-باشد. نمونه‌های زیر فقط نمونه هستند؛ برای استفاده واقعی UUID و path مخصوص خودتان
-را بسازید.
+The path must start with `/` and must be exactly the same in the Worker code and Relay settings in Simorgh. The examples below are just samples; for actual use, create your own UUID and path.
 
-#### مرحله ۴: کد کامل Worker
+#### Step 4: Complete Worker Code
 
-تمام کد موجود در ویرایشگر Cloudflare را پاک کنید و کد زیر را کامل paste کنید. سپس
-مقدارهای `EXPECTED_UUID` و `EXPECTED_PATH` را با مقادیر خودتان عوض کنید:
+Delete all the code in the Cloudflare editor and paste the following complete code. Then replace the `EXPECTED_UUID` and `EXPECTED_PATH` values with your own:
 
 ```javascript
 import { connect } from "cloudflare:sockets";
 
-// این دو مقدار باید با Relay داخل Simorgh دقیقاً یکی باشند.
+// These two values must exactly match the Relay in Simorgh.
 const EXPECTED_UUID = "8f4d6f2a-4b2c-4e6a-9d31-7c1b6a8e2190";
 const EXPECTED_PATH = "/simorgh-demo-7f3a";
 
@@ -140,17 +142,17 @@ export default {
   async fetch(request) {
     const url = new URL(request.url);
 
-    // برای بررسی سالم‌بودن Worker.
+    // For checking Worker health.
     if (url.pathname === "/health") {
       return new Response("simorgh-relay-ok", { status: 200 });
     }
 
-    // فقط مسیر محرمانه Relay مجاز است.
+    // Only the secret Relay path is allowed.
     if (url.pathname !== EXPECTED_PATH) {
       return new Response("Not found", { status: 404 });
     }
 
-    // اتصال Relay باید WebSocket باشد.
+    // Relay connection must be WebSocket.
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("WebSocket upgrade required", { status: 426 });
     }
@@ -199,7 +201,7 @@ async function handleVlessSession(webSocket) {
       writer = remote.writable.getWriter();
       initialized = true;
 
-      // پاسخ اولیه VLESS.
+      // Initial VLESS response.
       webSocket.send(new Uint8Array([0, 0]));
 
       if (request.payload.byteLength > 0) {
@@ -251,7 +253,7 @@ async function pumpRemote(remote, webSocket) {
 }
 
 function parseVlessRequest(bytes) {
-  // حداقل اندازه header موردنیاز VLESS.
+  // Minimum VLESS header size required.
   if (bytes.byteLength < 24 || bytes[0] !== 1) {
     return null;
   }
@@ -280,7 +282,7 @@ function parseVlessRequest(bytes) {
     offset += 4;
   }
 
-  // نام دامنه.
+  // Domain name.
   else if (addressType === 2) {
     const length = bytes[offset++];
 
@@ -344,34 +346,34 @@ async function asBytes(value) {
 }
 ```
 
-#### مرحله ۵: انتشار Worker
+#### Step 5: Publish Worker
 
-1. در ویرایشگر Cloudflare مطمئن شوید دو مقدار زیر عوض شده‌اند:
+1. In the Cloudflare editor, make sure the following two values are replaced:
 
    ```javascript
-   const EXPECTED_UUID = "UUID-خودتان";
-   const EXPECTED_PATH = "/مسیر-خودتان";
+   const EXPECTED_UUID = "YOUR-UUID";
+   const EXPECTED_PATH = "/YOUR-PATH";
    ```
 
-2. روی **Save and deploy** یا **Deploy** بزنید.
-3. چند لحظه صبر کنید تا وضعیت Worker به **Deployed** تغییر کند.
-4. در بخش تنظیمات Worker، فعال‌بودن مسیر `workers.dev` را بررسی کنید.
+2. Click **Save and deploy** or **Deploy**.
+3. Wait a few moments for the Worker status to change to **Deployed**.
+4. In the Worker settings, verify that the `workers.dev` route is enabled.
 
-آدرس عمومی Worker معمولاً به این شکل است:
+The public Worker address usually looks like this:
 
 ```text
 <worker-name>.<account-subdomain>.workers.dev
 ```
 
-برای نمونه:
+For example:
 
 ```text
 simorgh-relay.myaccount.workers.dev
 ```
 
-#### مرحله ۶: تست Worker
+#### Step 6: Test Worker
 
-در مرورگر یا PowerShell آدرس سلامت را باز کنید:
+In a browser or PowerShell, open the health address:
 
 ```powershell
 Invoke-WebRequest `
@@ -379,34 +381,29 @@ Invoke-WebRequest `
   -UseBasicParsing
 ```
 
-پاسخ صحیح باید این باشد:
+The correct response should be:
 
 ```text
 simorgh-relay-ok
 ```
 
-اگر پاسخ `404` گرفتید، مسیر `/health` را دقیقاً بررسی کنید. اگر خطای DNS گرفتید،
-`workers.dev` subdomain یا نام Worker هنوز آماده نشده است. اگر کد Deploy نمی‌شود،
-نام Worker و دسترسی Account را بررسی کنید.
+If you get a `404` response, check the `/health` path exactly. If you get a DNS error, the `workers.dev` subdomain or Worker name may not be ready yet. If the code does not deploy, check the Worker name and account access.
 
-#### مرحله ۷: واردکردن Relay در Simorgh
+#### Step 7: Add Relay in Simorgh
 
-در برنامه به **Relays → Add relay** بروید و مقادیر زیر را وارد کنید:
+In the app, go to **Relays → Add relay** and enter the following values:
 
-| فیلد Simorgh | مقدار |
+| Simorgh Field | Value |
 | --- | --- |
-| Name | یک نام دلخواه، مانند `Cloudflare Relay` |
-| Hostname | بدون `https://`؛ مانند `simorgh-relay.myaccount.workers.dev` |
+| Name | Any name, such as `Cloudflare Relay` |
+| Hostname | Without `https://`; such as `simorgh-relay.myaccount.workers.dev` |
 | Port | `443` |
-| UUID | همان مقدار `EXPECTED_UUID` در Worker |
-| WebSocket path | همان مقدار `EXPECTED_PATH` در Worker، مانند `/simorgh-demo-7f3a` |
+| UUID | Same value as `EXPECTED_UUID` in Worker |
+| WebSocket path | Same value as `EXPECTED_PATH` in Worker, such as `/simorgh-demo-7f3a` |
 
-Relay را ذخیره کنید، آن را **Active** کنید و سپس اتصال را از صفحه Home شروع کنید.
+Save the Relay, mark it as **Active**, and then start the connection from the Home page.
 
-UUID، path، API Token و Account ID اطلاعات محرمانه هستند. آن‌ها را در Git، issue،
-لاگ یا پیام عمومی قرار ندهید. اگر از **Auto-deploy** استفاده می‌کنید، روش دستی و
-کد بالا لازم نیست؛ Simorgh مقادیر امن و تصادفی تولید و آن‌ها را در secure storage
-ذخیره می‌کند.
+UUID, path, API Token, and Account ID are sensitive information. Do not place them in Git, issues, logs, or public messages. If you use **Auto-deploy**, the manual method and code above are not required; Simorgh generates secure random values and stores them in secure storage.
 
 ## Checks
 
